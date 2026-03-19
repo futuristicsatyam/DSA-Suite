@@ -6,7 +6,7 @@ import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, cn } from '@/lib/utils';
-import { ChevronDown, ChevronRight, BookOpen, Circle, CheckCircle2, ArrowRight, Clock, Bookmark, BookmarkCheck, Check } from 'lucide-react';
+import { ChevronDown, ChevronRight, BookOpen, Circle, CheckCircle2, ArrowRight, Clock, Bookmark, BookmarkCheck, Check, Menu, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth-context';
 import ReactMarkdown from 'react-markdown';
@@ -39,12 +39,76 @@ const DSA_TABS = [
 
 const PLACEHOLDER = `> [!NOTE]\n> This topic does not have a written editorial yet.\n\n## Coming Soon\n\nOur team is working on detailed notes for this topic.`;
 
+function SidebarContent({ subjects, subjectsLoading, activeTab, setActiveTab, selectedSlug, selectTopic, expanded, toggleExpand, completedTopicIds, isAuthenticated }: any) {
+  return (
+    <>
+      <div className="flex rounded-lg bg-muted p-1 mb-4">
+        {DSA_TABS.map((tab, i) => (
+          <button key={tab.label} onClick={() => setActiveTab(i)}
+            className={cn('flex-1 text-xs font-medium py-1.5 rounded-md transition-colors', activeTab === i ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-1">
+        {subjectsLoading ? Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-8 bg-muted animate-pulse rounded-lg" />) :
+          subjects.filter((s: Subject) => DSA_TABS[activeTab].slugs.includes(s.slug)).map((subject: Subject) => {
+            const isOpen = expanded.has(subject.slug);
+            const subjectCompleted = subject.topics.filter((t: Topic) => completedTopicIds.has(t.id)).length;
+            return (
+              <div key={subject.id}>
+                <button onClick={() => toggleExpand(subject.slug)}
+                  className="w-full flex items-center justify-between px-2 py-2 rounded-lg text-sm font-semibold hover:bg-accent transition-colors">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <BookOpen className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    <span className="truncate text-left">{subject.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {isAuthenticated && subjectCompleted > 0 && (
+                      <span className="text-xs text-green-600 font-medium">{subjectCompleted}/{subject.topics.length}</span>
+                    )}
+                    {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="ml-1 pl-3 border-l border-border mt-1 space-y-0.5">
+                    {subject.topics.sort((a: Topic, b: Topic) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999)).map((topic: Topic) => {
+                      const active = topic.slug === selectedSlug;
+                      const done = completedTopicIds.has(topic.id);
+                      return (
+                        <button key={topic.id} onClick={() => selectTopic(topic.slug)}
+                          className={cn('w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition-all',
+                            active ? 'bg-indigo-600 text-white font-medium' : 'text-foreground hover:bg-accent')}>
+                          {done && !active
+                            ? <CheckCircle2 className="w-3 h-3 flex-shrink-0 text-green-500" />
+                            : <Circle className={cn('w-3 h-3 flex-shrink-0', active ? 'text-indigo-200' : 'text-muted-foreground')} />
+                          }
+                          <span className="flex-1 leading-snug">{topic.title}</span>
+                          {topic.difficulty && !active && !done && (
+                            <span className={cn('text-xs px-1 rounded flex-shrink-0', DIFF_STYLES[topic.difficulty])}>
+                              {topic.difficulty[0]}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+      </div>
+    </>
+  );
+}
+
 function DsaContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedSlug = searchParams.get('topic');
   const [activeTab, setActiveTab] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [mobileOpen, setMobileOpen] = useState(false);
   const { isAuthenticated } = useAuth();
   const qc = useQueryClient();
 
@@ -77,15 +141,13 @@ function DsaContent() {
   const bookmarkId = bookmarks.find((b: any) => b.topic?.slug === selectedSlug)?.id;
   const currentProgress = progress.find(p => p.topicId === topicData?.topic?.id);
   const isCompleted = currentProgress?.completed ?? false;
+  const completedTopicIds = new Set(progress.filter(p => p.completed).map(p => p.topicId));
 
   const bookmarkMutation = useMutation({
     mutationFn: () => isBookmarked
       ? api.delete(`/user/bookmarks/${bookmarkId}`)
       : api.post('/user/bookmarks', { topicId: topicData?.topic?.id }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['bookmarks'] });
-      toast.success(isBookmarked ? 'Bookmark removed' : 'Bookmarked!');
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bookmarks'] }); toast.success(isBookmarked ? 'Bookmark removed' : 'Bookmarked!'); },
     onError: () => toast.error('Please login to bookmark topics'),
   });
 
@@ -107,9 +169,8 @@ function DsaContent() {
     const p = new URLSearchParams(searchParams.toString());
     p.set('topic', slug);
     router.push(`/dsa?${p.toString()}`, { scroll: false });
+    setMobileOpen(false);
   };
-
-  const visibleSubjects = subjects.filter(s => DSA_TABS[activeTab].slugs.includes(s.slug));
 
   const toggleExpand = (slug: string) => {
     setExpanded(prev => { const n = new Set(prev); n.has(slug) ? n.delete(slug) : n.add(slug); return n; });
@@ -122,74 +183,42 @@ function DsaContent() {
     }
   }, [selectedSlug, subjects]);
 
-  // Build completed topic ids set
-  const completedTopicIds = new Set(progress.filter(p => p.completed).map(p => p.topicId));
+  const sidebarProps = { subjects, subjectsLoading, activeTab, setActiveTab, selectedSlug, selectTopic, expanded, toggleExpand, completedTopicIds, isAuthenticated };
 
   return (
     <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Data Structures & Algorithms</h1>
-        <p className="text-muted-foreground text-sm mt-1">Master every DS and algorithm concept with structured editorials.</p>
+      {/* Mobile header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Data Structures & Algorithms</h1>
+          <p className="text-muted-foreground text-sm mt-1 hidden sm:block">Master every DS and algorithm concept with structured editorials.</p>
+        </div>
+        <button onClick={() => setMobileOpen(true)}
+          className="md:hidden flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:bg-accent text-sm font-medium transition-colors">
+          <Menu className="w-4 h-4" /> Topics
+        </button>
       </div>
-      <div className="flex gap-6 items-start">
-        <aside className="w-64 flex-shrink-0 hidden md:block sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto">
-          <div className="flex rounded-lg bg-muted p-1 mb-4">
-            {DSA_TABS.map((tab, i) => (
-              <button key={tab.label} onClick={() => setActiveTab(i)}
-                className={cn('flex-1 text-xs font-medium py-1.5 rounded-md transition-colors', activeTab === i ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-                {tab.label}
+
+      {/* Mobile drawer overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+          <div className="absolute left-0 top-0 bottom-0 w-80 bg-background border-r border-border overflow-y-auto p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold">Topics</h2>
+              <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-md hover:bg-accent">
+                <X className="w-4 h-4" />
               </button>
-            ))}
+            </div>
+            <SidebarContent {...sidebarProps} />
           </div>
-          <div className="space-y-1">
-            {subjectsLoading ? Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-8 bg-muted animate-pulse rounded-lg" />) :
-              visibleSubjects.length === 0 ? <p className="text-xs text-muted-foreground px-2 py-4 text-center">No content yet</p> :
-                visibleSubjects.map(subject => {
-                  const isOpen = expanded.has(subject.slug);
-                  const subjectCompleted = subject.topics.filter(t => completedTopicIds.has(t.id)).length;
-                  return (
-                    <div key={subject.id}>
-                      <button onClick={() => toggleExpand(subject.slug)}
-                        className="w-full flex items-center justify-between px-2 py-2 rounded-lg text-sm font-semibold hover:bg-accent transition-colors">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <BookOpen className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate text-left">{subject.name}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {isAuthenticated && subjectCompleted > 0 && (
-                            <span className="text-xs text-green-600 font-medium">{subjectCompleted}/{subject.topics.length}</span>
-                          )}
-                          {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
-                        </div>
-                      </button>
-                      {isOpen && (
-                        <div className="ml-1 pl-3 border-l border-border mt-1 space-y-0.5">
-                          {subject.topics.sort((a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999)).map(topic => {
-                            const active = topic.slug === selectedSlug;
-                            const done = completedTopicIds.has(topic.id);
-                            return (
-                              <button key={topic.id} onClick={() => selectTopic(topic.slug)}
-                                className={cn('w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition-all',
-                                  active ? 'bg-indigo-600 text-white font-medium' : 'text-foreground hover:bg-accent')}>
-                                {done && !active
-                                  ? <CheckCircle2 className="w-3 h-3 flex-shrink-0 text-green-500" />
-                                  : <Circle className={cn('w-3 h-3 flex-shrink-0', active ? 'text-indigo-200' : 'text-muted-foreground')} />
-                                }
-                                <span className="flex-1 leading-snug">{topic.title}</span>
-                                {topic.difficulty && !active && !done && (
-                                  <span className={cn('text-xs px-1 rounded flex-shrink-0', DIFF_STYLES[topic.difficulty])}>
-                                    {topic.difficulty[0]}
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-          </div>
+        </div>
+      )}
+
+      <div className="flex gap-6 items-start">
+        {/* Desktop sidebar */}
+        <aside className="w-64 flex-shrink-0 hidden md:block sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto">
+          <SidebarContent {...sidebarProps} />
         </aside>
 
         <main className="flex-1 min-w-0">
@@ -200,6 +229,9 @@ function DsaContent() {
               </div>
               <h2 className="text-xl font-bold">Select a topic</h2>
               <p className="text-sm text-muted-foreground max-w-xs">Choose a topic from the sidebar to start reading.</p>
+              <button onClick={() => setMobileOpen(true)} className="md:hidden flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium">
+                <Menu className="w-4 h-4" /> Browse topics
+              </button>
             </div>
           ) : topicLoading ? (
             <div className="space-y-4 animate-pulse">
@@ -213,35 +245,18 @@ function DsaContent() {
                 <div className="flex items-start justify-between gap-4">
                   <h1 className="text-2xl font-bold">{topicData.topic.title}</h1>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {/* Complete button */}
-                    <button
-                      onClick={() => progressMutation.mutate()}
-                      disabled={progressMutation.isPending}
-                      className={cn(
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-                        isCompleted
-                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                          : 'border border-border hover:bg-accent text-muted-foreground hover:text-foreground'
-                      )}
-                    >
+                    <button onClick={() => progressMutation.mutate()} disabled={progressMutation.isPending}
+                      className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                        isCompleted ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : 'border border-border hover:bg-accent text-muted-foreground hover:text-foreground')}>
                       <Check className="w-3.5 h-3.5" />
                       {isCompleted ? 'Completed' : 'Mark complete'}
                     </button>
-                    {/* Bookmark button */}
-                    <button
-                      onClick={() => bookmarkMutation.mutate()}
-                      disabled={bookmarkMutation.isPending}
-                      className={cn(
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-                        isBookmarked
-                          ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-                          : 'border border-border hover:bg-accent text-muted-foreground hover:text-foreground'
-                      )}
-                    >
-                      {isBookmarked
-                        ? <><BookmarkCheck className="w-3.5 h-3.5" /> Bookmarked</>
-                        : <><Bookmark className="w-3.5 h-3.5" /> Bookmark</>
-                      }
+                    <button onClick={() => bookmarkMutation.mutate()} disabled={bookmarkMutation.isPending}
+                      className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                        isBookmarked ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                          : 'border border-border hover:bg-accent text-muted-foreground hover:text-foreground')}>
+                      {isBookmarked ? <><BookmarkCheck className="w-3.5 h-3.5" /> Bookmarked</> : <><Bookmark className="w-3.5 h-3.5" /> Bookmark</>}
                     </button>
                   </div>
                 </div>
