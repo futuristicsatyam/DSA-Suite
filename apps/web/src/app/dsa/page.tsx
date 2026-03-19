@@ -1,17 +1,17 @@
 'use client';
 
 export const dynamic = 'force-dynamic';
-import { useState, useEffect } from 'react';
+
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api, cn } from '@/lib/utils';
-import { ChevronDown, ChevronRight, BookOpen, Circle, CheckCircle2, ArrowRight, Clock, Tag } from 'lucide-react';
+import { ChevronDown, ChevronRight, BookOpen, Circle, ArrowRight, Clock } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSlug from 'rehype-slug';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
 interface Topic {
   id: string; slug: string; title: string;
   shortDescription: string | null;
@@ -32,9 +32,9 @@ const DSA_TABS = [
   { label: 'Algorithms', slugs: ['sorting','binary-search','greedy','two-pointers','sliding-window','divide-and-conquer','bit-manipulation','recursion','backtracking'] },
 ];
 
-const PLACEHOLDER = `> [!NOTE]\n> This topic doesn't have a written editorial yet. It will be added soon!\n\n## Coming Soon\n\nOur team is working on detailed notes for this topic. Check back later.`;
+const PLACEHOLDER = `> [!NOTE]\n> This topic does not have a written editorial yet.\n\n## Coming Soon\n\nOur team is working on detailed notes for this topic.`;
 
-export default function DsaPage() {
+function DsaContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedSlug = searchParams.get('topic');
@@ -66,7 +66,6 @@ export default function DsaPage() {
     setExpanded(prev => { const n = new Set(prev); n.has(slug) ? n.delete(slug) : n.add(slug); return n; });
   };
 
-  // Auto-expand subject containing selected topic
   useEffect(() => {
     if (selectedSlug && subjects.length) {
       const sub = subjects.find(s => s.topics.some(t => t.slug === selectedSlug));
@@ -80,11 +79,8 @@ export default function DsaPage() {
         <h1 className="text-2xl font-bold">Data Structures & Algorithms</h1>
         <p className="text-muted-foreground text-sm mt-1">Master every DS and algorithm concept with structured editorials.</p>
       </div>
-
       <div className="flex gap-6 items-start">
-        {/* Sidebar */}
         <aside className="w-64 flex-shrink-0 hidden md:block sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto">
-          {/* Tabs */}
           <div className="flex rounded-lg bg-muted p-1 mb-4">
             {DSA_TABS.map((tab, i) => (
               <button key={tab.label} onClick={() => setActiveTab(i)}
@@ -93,8 +89,6 @@ export default function DsaPage() {
               </button>
             ))}
           </div>
-
-          {/* Subject list */}
           <div className="space-y-1">
             {subjectsLoading ? Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-8 bg-muted animate-pulse rounded-lg" />) :
               visibleSubjects.length === 0 ? <p className="text-xs text-muted-foreground px-2 py-4 text-center">No content yet</p> :
@@ -135,8 +129,6 @@ export default function DsaPage() {
                 })}
           </div>
         </aside>
-
-        {/* Main content */}
         <main className="flex-1 min-w-0">
           {!selectedSlug ? (
             <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-4">
@@ -144,18 +136,16 @@ export default function DsaPage() {
                 <ArrowRight className="w-8 h-8 text-indigo-600" />
               </div>
               <h2 className="text-xl font-bold">Select a topic</h2>
-              <p className="text-sm text-muted-foreground max-w-xs">Choose a topic from the sidebar to start reading editorials and examples.</p>
+              <p className="text-sm text-muted-foreground max-w-xs">Choose a topic from the sidebar to start reading.</p>
             </div>
           ) : topicLoading ? (
             <div className="space-y-4 animate-pulse">
               <div className="h-8 bg-muted rounded w-3/4" />
               <div className="h-4 bg-muted rounded w-1/2" />
-              <div className="h-px bg-border" />
               {Array.from({ length: 8 }).map((_, i) => <div key={i} className={`h-4 bg-muted rounded ${i % 3 === 0 ? 'w-1/3' : 'w-full'}`} />)}
             </div>
           ) : topicData ? (
             <div className="space-y-6">
-              {/* Header */}
               <div className="space-y-3">
                 <h1 className="text-2xl font-bold">{topicData.topic.title}</h1>
                 <div className="flex flex-wrap gap-2 text-sm">
@@ -178,44 +168,8 @@ export default function DsaPage() {
                 )}
               </div>
               <hr className="border-border" />
-              {/* Markdown */}
-              <article className="prose prose-slate dark:prose-invert max-w-none
-                prose-headings:font-bold prose-a:text-indigo-600
-                prose-code:text-indigo-600 prose-code:bg-indigo-50 dark:prose-code:bg-indigo-950/30
-                prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
-                prose-pre:p-0 prose-pre:bg-transparent
-                prose-blockquote:border-l-indigo-400 prose-blockquote:not-italic">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight, rehypeSlug]}
-                  components={{
-                    pre({ children, ...props }) {
-                      const code = (children as React.ReactElement)?.props;
-                      return (
-                        <div className="relative my-4 rounded-xl overflow-hidden border border-border">
-                          <div className="flex items-center px-4 py-2 bg-zinc-900 border-b border-white/10">
-                            <span className="text-xs text-zinc-400 font-mono">{code?.className?.replace('language-', '') || 'code'}</span>
-                          </div>
-                          <pre {...props} className="!m-0 !rounded-none !bg-zinc-950 overflow-x-auto p-4 text-sm">{children}</pre>
-                        </div>
-                      );
-                    },
-                    blockquote({ children, ...props }) {
-                      const text = String((children as React.ReactElement[])?.[0]?.props?.children ?? '');
-                      const type = text.match(/^\[!(NOTE|TIP|WARNING|IMPORTANT)\]/i)?.[1]?.toUpperCase();
-                      const styles: Record<string, string> = {
-                        NOTE: 'border-blue-400 bg-blue-50 dark:bg-blue-950/20',
-                        TIP: 'border-green-400 bg-green-50 dark:bg-green-950/20',
-                        WARNING: 'border-yellow-400 bg-yellow-50 dark:bg-yellow-950/20',
-                        IMPORTANT: 'border-purple-400 bg-purple-50 dark:bg-purple-950/20',
-                      };
-                      const icons: Record<string, string> = { NOTE: 'ℹ️', TIP: '💡', WARNING: '⚠️', IMPORTANT: '📌' };
-                      if (type && styles[type]) {
-                        return <div className={cn('not-prose border-l-4 px-4 py-3 rounded-r-lg my-4 text-sm', styles[type])}>
-                          <p className="font-semibold mb-1">{icons[type]} {type}</p><div>{children}</div>
-                        </div>;
-                      }
-                      return <blockquote {...props}>{children}</blockquote>;
-                    },
-                  }}>
+              <article className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-a:text-indigo-600 prose-code:text-indigo-600 prose-code:bg-indigo-50 dark:prose-code:bg-indigo-950/30 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-pre:p-0 prose-pre:bg-transparent">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight, rehypeSlug]}>
                   {topicData.editorial?.markdownContent ?? PLACEHOLDER}
                 </ReactMarkdown>
               </article>
@@ -224,5 +178,13 @@ export default function DsaPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function DsaPage() {
+  return (
+    <Suspense fallback={<div className="max-w-screen-2xl mx-auto px-4 py-10 animate-pulse space-y-4"><div className="h-8 bg-muted rounded w-48" /></div>}>
+      <DsaContent />
+    </Suspense>
   );
 }
