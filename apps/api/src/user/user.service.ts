@@ -11,14 +11,12 @@ import * as bcrypt from 'bcrypt';
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // ── Dashboard ─────────────────────────────────────────────────────────────
   async getDashboard(userId: string) {
-    const [continueLearning, recentlyViewed, bookmarks, completedCount, totalTopics, recommendations] =
+    const [allProgress, recentlyViewed, bookmarks, totalTopics, recommendations] =
       await Promise.all([
         this.prisma.userProgress.findMany({
-          where: { userId, progressPercent: { gt: 0, lt: 100 } },
+          where: { userId },
           orderBy: { updatedAt: 'desc' },
-          take: 5,
           include: { topic: { include: { subject: true } } },
         }),
         this.prisma.recentlyViewed.findMany({
@@ -33,7 +31,6 @@ export class UserService {
           take: 5,
           include: { topic: { include: { subject: true } } },
         }),
-        this.prisma.userProgress.count({ where: { userId, completed: true } }),
         this.prisma.topic.count(),
         this.prisma.topic.findMany({
           take: 5,
@@ -42,9 +39,16 @@ export class UserService {
         }),
       ]);
 
-    const percent =
-      totalTopics > 0 ? Math.round((completedCount / totalTopics) * 100) : 0;
+    const completedCount = allProgress.filter(p => p.completed).length;
+    const percent = totalTopics > 0 ? Math.round((completedCount / totalTopics) * 100) : 0;
 
+    // Continue learning = recently viewed topics (in progress or completed)
+    const continueLearning = allProgress
+      .filter(p => p.progressPercent > 0)
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+      .slice(0, 5);
+
+    // Weekly activity
     const now = new Date();
     const weeklyActivity = Array.from({ length: 7 }, (_, i) => {
       const date = new Date(now);
@@ -57,19 +61,55 @@ export class UserService {
       const found = weeklyActivity.find((e) => e.date === day);
       if (found) found.count += 1;
     }
+    for (const item of allProgress) {
+      const day = item.updatedAt.toISOString().slice(0, 10);
+      const found = weeklyActivity.find((e) => e.date === day);
+      if (found) found.count += 1;
+    }
+
+    // Streak calculation
+    const streak = this.calculateStreak(allProgress, recentlyViewed);
 
     return {
       continueLearning,
       recentlyViewed,
       bookmarks,
       progressSummary: { completedCount, totalTopics, percent },
-      streak: 0,
+      streak,
       weeklyActivity,
       recommendations,
     };
   }
 
-  // ── Profile ───────────────────────────────────────────────────────────────
+  private calculateStreak(progress: any[], recentlyViewed: any[]): number {
+    const activityDates = new Set<string>();
+
+    for (const p of progress) {
+      activityDates.add(p.updatedAt.toISOString().slice(0, 10));
+    }
+    for (const r of recentlyViewed) {
+      activityDates.add(r.viewedAt.toISOString().slice(0, 10));
+    }
+
+    if (activityDates.size === 0) return 0;
+
+    let streak = 0;
+    const today = new Date();
+
+    for (let i = 0; i < 365; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const dateStr = date.toISOString().slice(0, 10);
+      if (activityDates.has(dateStr)) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  }
+
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     if (!dto.name || dto.name.trim().length < 2) {
       throw new BadRequestException('Name must be at least 2 characters');
@@ -85,7 +125,6 @@ export class UserService {
     });
   }
 
-  // ── Change password ───────────────────────────────────────────────────────
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -105,7 +144,6 @@ export class UserService {
     return { message: 'Password changed successfully' };
   }
 
-  // ── Bookmarks ─────────────────────────────────────────────────────────────
   async getBookmarks(userId: string) {
     return this.prisma.bookmark.findMany({
       where: { userId },
@@ -136,7 +174,6 @@ export class UserService {
     return { message: 'Bookmark removed' };
   }
 
-  // ── Progress ──────────────────────────────────────────────────────────────
   async getProgress(userId: string) {
     return this.prisma.userProgress.findMany({
       where: { userId },
@@ -154,7 +191,6 @@ export class UserService {
     });
   }
 
-  // ── Recently viewed ───────────────────────────────────────────────────────
   async getRecentlyViewed(userId: string) {
     return this.prisma.recentlyViewed.findMany({
       where: { userId },
