@@ -6,14 +6,14 @@ import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, cn } from '@/lib/utils';
-import { ChevronDown, ChevronRight, BookOpen, Circle, ArrowRight, Clock, Bookmark, BookmarkCheck } from 'lucide-react';
+import { ChevronDown, ChevronRight, BookOpen, Circle, CheckCircle2, ArrowRight, Clock, Bookmark, BookmarkCheck, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth-context';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSlug from 'rehype-slug';
-import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 
 interface Topic {
@@ -24,6 +24,7 @@ interface Topic {
 }
 interface Subject { id: string; name: string; slug: string; topics: Topic[]; }
 interface Editorial { title: string; markdownContent: string; tags: string[]; estimatedMinutes: number | null; }
+interface Progress { topicId: string; completed: boolean; progressPercent: number; }
 
 const DIFF_STYLES = {
   BEGINNER: 'text-green-600 bg-green-50 dark:bg-green-900/20',
@@ -60,8 +61,17 @@ function CpContent() {
     enabled: isAuthenticated,
   });
 
+  const { data: progress = [] } = useQuery({
+    queryKey: ['progress'],
+    queryFn: () => api.get('/user/progress').then(r => r.data as Progress[]),
+    enabled: isAuthenticated,
+  });
+
   const isBookmarked = bookmarks.some((b: any) => b.topic?.slug === selectedSlug);
   const bookmarkId = bookmarks.find((b: any) => b.topic?.slug === selectedSlug)?.id;
+  const currentProgress = progress.find(p => p.topicId === topicData?.topic?.id);
+  const isCompleted = currentProgress?.completed ?? false;
+  const completedTopicIds = new Set(progress.filter(p => p.completed).map(p => p.topicId));
 
   const bookmarkMutation = useMutation({
     mutationFn: () => isBookmarked
@@ -72,6 +82,20 @@ function CpContent() {
       toast.success(isBookmarked ? 'Bookmark removed' : 'Bookmarked!');
     },
     onError: () => toast.error('Please login to bookmark topics'),
+  });
+
+  const progressMutation = useMutation({
+    mutationFn: () => api.post('/user/progress', {
+      topicId: topicData?.topic?.id,
+      progressPercent: isCompleted ? 0 : 100,
+      completed: !isCompleted,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['progress'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      toast.success(isCompleted ? 'Marked as incomplete' : 'Topic completed! 🎉');
+    },
+    onError: () => toast.error('Please login to track progress'),
   });
 
   const selectTopic = (slug: string) => {
@@ -103,6 +127,7 @@ function CpContent() {
             {isLoading ? Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-8 bg-muted animate-pulse rounded-lg" />) :
               subjects.map(subject => {
                 const isOpen = expanded.has(subject.slug);
+                const subjectCompleted = subject.topics.filter(t => completedTopicIds.has(t.id)).length;
                 return (
                   <div key={subject.id}>
                     <button onClick={() => toggleExpand(subject.slug)}
@@ -111,19 +136,28 @@ function CpContent() {
                         <BookOpen className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                         <span className="truncate text-left">{subject.name}</span>
                       </div>
-                      {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {isAuthenticated && subjectCompleted > 0 && (
+                          <span className="text-xs text-green-600 font-medium">{subjectCompleted}/{subject.topics.length}</span>
+                        )}
+                        {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+                      </div>
                     </button>
                     {isOpen && (
                       <div className="ml-1 pl-3 border-l border-border mt-1 space-y-0.5">
                         {subject.topics.sort((a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999)).map(topic => {
                           const active = topic.slug === selectedSlug;
+                          const done = completedTopicIds.has(topic.id);
                           return (
                             <button key={topic.id} onClick={() => selectTopic(topic.slug)}
                               className={cn('w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition-all',
                                 active ? 'bg-blue-600 text-white font-medium' : 'text-foreground hover:bg-accent')}>
-                              <Circle className={cn('w-3 h-3 flex-shrink-0', active ? 'text-blue-200' : 'text-muted-foreground')} />
+                              {done && !active
+                                ? <CheckCircle2 className="w-3 h-3 flex-shrink-0 text-green-500" />
+                                : <Circle className={cn('w-3 h-3 flex-shrink-0', active ? 'text-blue-200' : 'text-muted-foreground')} />
+                              }
                               <span className="flex-1 leading-snug">{topic.title}</span>
-                              {topic.difficulty && !active && (
+                              {topic.difficulty && !active && !done && (
                                 <span className={cn('text-xs px-1 rounded flex-shrink-0', DIFF_STYLES[topic.difficulty])}>
                                   {topic.difficulty[0]}
                                 </span>
@@ -159,21 +193,21 @@ function CpContent() {
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-4">
                   <h1 className="text-2xl font-bold">{topicData.topic.title}</h1>
-                  <button
-                    onClick={() => bookmarkMutation.mutate()}
-                    disabled={bookmarkMutation.isPending}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex-shrink-0',
-                      isBookmarked
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                        : 'border border-border hover:bg-accent text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    {isBookmarked
-                      ? <><BookmarkCheck className="w-3.5 h-3.5" /> Bookmarked</>
-                      : <><Bookmark className="w-3.5 h-3.5" /> Bookmark</>
-                    }
-                  </button>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button onClick={() => progressMutation.mutate()} disabled={progressMutation.isPending}
+                      className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                        isCompleted ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : 'border border-border hover:bg-accent text-muted-foreground hover:text-foreground')}>
+                      <Check className="w-3.5 h-3.5" />
+                      {isCompleted ? 'Completed' : 'Mark complete'}
+                    </button>
+                    <button onClick={() => bookmarkMutation.mutate()} disabled={bookmarkMutation.isPending}
+                      className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                        isBookmarked ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                          : 'border border-border hover:bg-accent text-muted-foreground hover:text-foreground')}>
+                      {isBookmarked ? <><BookmarkCheck className="w-3.5 h-3.5" /> Bookmarked</> : <><Bookmark className="w-3.5 h-3.5" /> Bookmark</>}
+                    </button>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {topicData.topic.difficulty && (
@@ -184,6 +218,11 @@ function CpContent() {
                   {topicData.editorial?.estimatedMinutes && (
                     <span className="flex items-center gap-1 text-muted-foreground text-xs">
                       <Clock className="w-3.5 h-3.5" />{topicData.editorial.estimatedMinutes} min read
+                    </span>
+                  )}
+                  {isCompleted && (
+                    <span className="flex items-center gap-1 text-green-600 text-xs font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Completed
                     </span>
                   )}
                   {topicData.editorial?.tags?.map(tag => (
