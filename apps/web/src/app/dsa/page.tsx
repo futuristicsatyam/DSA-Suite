@@ -11,9 +11,9 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth-context';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSlug from 'rehype-slug';
-import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 
 interface Topic {
@@ -213,7 +213,9 @@ function DsaContent() {
               </div>
               <hr className="border-border" />
               <article className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-a:text-indigo-600 prose-code:text-indigo-600 prose-code:bg-indigo-50 dark:prose-code:bg-indigo-950/30 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-pre:p-0 prose-pre:bg-transparent">
-                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeHighlight, rehypeSlug, rehypeKatex]}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeHighlight, rehypeSlug, rehypeKatex]}
                   components={{
                     pre({ children, ...props }) {
                       const code = (children as React.ReactElement)?.props;
@@ -237,13 +239,17 @@ function DsaContent() {
                       };
                       const icons: Record<string, string> = { NOTE: 'ℹ️', TIP: '💡', WARNING: '⚠️', IMPORTANT: '📌' };
                       if (type && styles[type]) {
-                        return <div className={cn('not-prose border-l-4 px-4 py-3 rounded-r-lg my-4 text-sm', styles[type])}>
-                          <p className="font-semibold mb-1">{icons[type]} {type}</p><div>{children}</div>
-                        </div>;
+                        return (
+                          <div className={cn('not-prose border-l-4 px-4 py-3 rounded-r-lg my-4 text-sm', styles[type])}>
+                            <p className="font-semibold mb-1">{icons[type]} {type}</p>
+                            <div>{children}</div>
+                          </div>
+                        );
                       }
                       return <blockquote {...props}>{children}</blockquote>;
                     },
-                  }}>
+                  }}
+                >
                   {topicData.editorial?.markdownContent ?? PLACEHOLDER}
                 </ReactMarkdown>
               </article>
@@ -262,4 +268,3 @@ export default function DsaPage() {
     </Suspense>
   );
 }
-
