@@ -65,13 +65,10 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(original);
       } catch {
-        setAccessToken(null);
-        refreshQueue = [];
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
-        return Promise.reject(error);
-      } finally {
+  setAccessToken(null);
+  refreshQueue = [];
+  return Promise.reject(error);
+}finally {
         isRefreshing = false;
       }
     }
