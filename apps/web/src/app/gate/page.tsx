@@ -1,7 +1,8 @@
 'use client';
 
 export const dynamic = 'force-dynamic';
-import { useState, useEffect } from 'react';
+
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api, cn } from '@/lib/utils';
@@ -28,7 +29,7 @@ const DIFF_STYLES = {
 
 const PLACEHOLDER = `> [!NOTE]\n> Editorial coming soon for this GATE topic.\n\n## Stay tuned!\n\nDetailed GATE CSE notes with previous year questions are being added.`;
 
-export default function GatePage() {
+function GateContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedSlug = searchParams.get('topic');
@@ -70,9 +71,7 @@ export default function GatePage() {
         <h1 className="text-2xl font-bold">GATE CSE Preparation</h1>
         <p className="text-muted-foreground text-sm mt-1">Complete theory notes for all GATE CSE subjects.</p>
       </div>
-
       <div className="flex gap-6 items-start">
-        {/* Sidebar */}
         <aside className="w-64 flex-shrink-0 hidden md:block sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto">
           <div className="space-y-1">
             {isLoading ? Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-8 bg-muted animate-pulse rounded-lg" />) :
@@ -113,8 +112,6 @@ export default function GatePage() {
               })}
           </div>
         </aside>
-
-        {/* Main content */}
         <main className="flex-1 min-w-0">
           {!selectedSlug ? (
             <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-4">
@@ -128,14 +125,13 @@ export default function GatePage() {
             <div className="space-y-4 animate-pulse">
               <div className="h-8 bg-muted rounded w-3/4" />
               <div className="h-4 bg-muted rounded w-1/2" />
-              <div className="h-px bg-border" />
               {Array.from({ length: 8 }).map((_, i) => <div key={i} className={`h-4 bg-muted rounded ${i % 3 === 0 ? 'w-1/3' : 'w-full'}`} />)}
             </div>
           ) : topicData ? (
             <div className="space-y-6">
               <div className="space-y-3">
                 <h1 className="text-2xl font-bold">{topicData.topic.title}</h1>
-                <div className="flex flex-wrap gap-2 text-sm">
+                <div className="flex flex-wrap gap-2">
                   {topicData.topic.difficulty && (
                     <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-semibold', DIFF_STYLES[topicData.topic.difficulty])}>
                       {topicData.topic.difficulty[0] + topicData.topic.difficulty.slice(1).toLowerCase()}
@@ -155,25 +151,8 @@ export default function GatePage() {
                 )}
               </div>
               <hr className="border-border" />
-              <article className="prose prose-slate dark:prose-invert max-w-none
-                prose-headings:font-bold prose-a:text-purple-600
-                prose-code:text-purple-600 prose-code:bg-purple-50 dark:prose-code:bg-purple-950/30
-                prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
-                prose-pre:p-0 prose-pre:bg-transparent">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight, rehypeSlug]}
-                  components={{
-                    pre({ children, ...props }) {
-                      const code = (children as React.ReactElement)?.props;
-                      return (
-                        <div className="relative my-4 rounded-xl overflow-hidden border border-border">
-                          <div className="flex items-center px-4 py-2 bg-zinc-900 border-b border-white/10">
-                            <span className="text-xs text-zinc-400 font-mono">{code?.className?.replace('language-', '') || 'code'}</span>
-                          </div>
-                          <pre {...props} className="!m-0 !rounded-none !bg-zinc-950 overflow-x-auto p-4 text-sm">{children}</pre>
-                        </div>
-                      );
-                    },
-                  }}>
+              <article className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-a:text-purple-600 prose-code:text-purple-600 prose-code:bg-purple-50 dark:prose-code:bg-purple-950/30 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-pre:p-0 prose-pre:bg-transparent">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight, rehypeSlug]}>
                   {topicData.editorial?.markdownContent ?? PLACEHOLDER}
                 </ReactMarkdown>
               </article>
@@ -182,5 +161,13 @@ export default function GatePage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function GatePage() {
+  return (
+    <Suspense fallback={<div className="max-w-screen-2xl mx-auto px-4 py-10 animate-pulse space-y-4"><div className="h-8 bg-muted rounded w-48" /></div>}>
+      <GateContent />
+    </Suspense>
   );
 }
