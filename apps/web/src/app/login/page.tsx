@@ -37,7 +37,7 @@ function LoginContent() {
     try {
       const user = await login(identifier, password);
       toast.success(`Welcome back, ${user.name.split(' ')[0]}!`);
-      router.push(user.role === 'ADMIN' ? '/admin' : from);
+      router.replace(user.role === 'ADMIN' ? '/admin' : '/dashboard');
     } catch (err) {
       const msg = apiError(err);
       if (msg.toLowerCase().includes('invalid')) {
