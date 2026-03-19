@@ -4,9 +4,11 @@ export const dynamic = 'force-dynamic';
 
 import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, cn } from '@/lib/utils';
-import { ChevronDown, ChevronRight, BookOpen, Circle, ArrowRight, Clock } from 'lucide-react';
+import { ChevronDown, ChevronRight, BookOpen, Circle, ArrowRight, Clock, Bookmark, BookmarkCheck } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/auth-context';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -34,6 +36,8 @@ function CpContent() {
   const searchParams = useSearchParams();
   const selectedSlug = searchParams.get('topic');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const { isAuthenticated } = useAuth();
+  const qc = useQueryClient();
 
   const { data: subjects = [], isLoading } = useQuery({
     queryKey: ['cp-subjects'],
@@ -46,6 +50,26 @@ function CpContent() {
     queryFn: () => api.get(`/content/cp/topics/${selectedSlug}`).then(r => r.data as { topic: Topic; editorial: Editorial | null }),
     enabled: !!selectedSlug,
     staleTime: 5 * 60_000,
+  });
+
+  const { data: bookmarks = [] } = useQuery({
+    queryKey: ['bookmarks'],
+    queryFn: () => api.get('/user/bookmarks').then(r => r.data as any[]),
+    enabled: isAuthenticated,
+  });
+
+  const isBookmarked = bookmarks.some((b: any) => b.topic?.slug === selectedSlug);
+  const bookmarkId = bookmarks.find((b: any) => b.topic?.slug === selectedSlug)?.id;
+
+  const bookmarkMutation = useMutation({
+    mutationFn: () => isBookmarked
+      ? api.delete(`/user/bookmarks/${bookmarkId}`)
+      : api.post('/user/bookmarks', { topicId: topicData?.topic?.id }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bookmarks'] });
+      toast.success(isBookmarked ? 'Bookmark removed' : 'Bookmarked!');
+    },
+    onError: () => toast.error('Please login to bookmark topics'),
   });
 
   const selectTopic = (slug: string) => {
@@ -112,6 +136,7 @@ function CpContent() {
               })}
           </div>
         </aside>
+
         <main className="flex-1 min-w-0">
           {!selectedSlug ? (
             <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-4">
@@ -130,7 +155,24 @@ function CpContent() {
           ) : topicData ? (
             <div className="space-y-6">
               <div className="space-y-3">
-                <h1 className="text-2xl font-bold">{topicData.topic.title}</h1>
+                <div className="flex items-start justify-between gap-4">
+                  <h1 className="text-2xl font-bold">{topicData.topic.title}</h1>
+                  <button
+                    onClick={() => bookmarkMutation.mutate()}
+                    disabled={bookmarkMutation.isPending}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex-shrink-0',
+                      isBookmarked
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                        : 'border border-border hover:bg-accent text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {isBookmarked
+                      ? <><BookmarkCheck className="w-3.5 h-3.5" /> Bookmarked</>
+                      : <><Bookmark className="w-3.5 h-3.5" /> Bookmark</>
+                    }
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {topicData.topic.difficulty && (
                     <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-semibold', DIFF_STYLES[topicData.topic.difficulty])}>
