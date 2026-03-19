@@ -105,7 +105,7 @@ export default function AboutPage() {
             { icon: Bookmark, title: 'Bookmarks', desc: 'Save any topic for quick access later, grouped by category' },
             { icon: Search, title: 'Instant search', desc: 'Find any topic, subject or editorial instantly with the / shortcut' },
             { icon: TrendingUp, title: 'Dashboard', desc: 'Weekly activity chart, continue learning, and progress overview' },
-            { icon: Code2, title: 'Admin panel', desc: 'Full CMS to manage subjects, topics and editorials with a markdown editor' },
+            { icon: TrendingUp, title: 'Day streaks', desc: 'Build a daily learning habit with streak tracking and weekly activity charts' },
           ].map(f => (
             <div key={f.title} className="flex items-start gap-4 p-4 rounded-xl border border-border bg-card">
               <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center flex-shrink-0">
@@ -115,28 +115,6 @@ export default function AboutPage() {
                 <h3 className="font-semibold text-sm">{f.title}</h3>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{f.desc}</p>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Tech stack */}
-      <section className="space-y-6">
-        <h2 className="text-2xl font-bold">Built with</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { name: 'Next.js 15', desc: 'Frontend framework' },
-            { name: 'NestJS', desc: 'Backend API' },
-            { name: 'PostgreSQL', desc: 'Database' },
-            { name: 'Prisma', desc: 'ORM' },
-            { name: 'Tailwind CSS', desc: 'Styling' },
-            { name: 'TanStack Query', desc: 'Data fetching' },
-            { name: 'Vercel', desc: 'Frontend hosting' },
-            { name: 'Render', desc: 'API hosting' },
-          ].map(t => (
-            <div key={t.name} className="p-3 rounded-xl border border-border bg-card text-center space-y-1">
-              <p className="font-semibold text-sm">{t.name}</p>
-              <p className="text-xs text-muted-foreground">{t.desc}</p>
             </div>
           ))}
         </div>
