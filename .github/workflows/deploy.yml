@@ -1,0 +1,55 @@
+# .github/workflows/deploy.yml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ── Seed database (manual trigger only) ────────────────────────────────────
+  seed:
+    name: Seed Database
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema prisma/schema.prisma
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Push schema
+        run: npx prisma db push --schema prisma/schema.prisma --accept-data-loss
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run seed
+        run: npx ts-node --compiler-options '{"module":"CommonJS"}' prisma/seed.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  # ── Notify Render to deploy (on every push to main) ────────────────────────
+  notify:
+    name: Trigger Render Deploy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Trigger deploy
+        run: |
+          echo "Push to main detected — Render auto-deploys from GitHub."
+          echo "No additional steps needed if Render is connected to this repo."
