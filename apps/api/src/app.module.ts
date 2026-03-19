@@ -1,23 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { DatabaseModule } from './database/database.module';
-import { HealthModule } from './health/health.module';
-import { AuthModule } from './auth/auth.module';
+import { AdminController } from './admin.controller';
+import { AdminService } from './admin.service';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '.env',
-    }),
-    ThrottlerModule.forRoot([
-      { name: 'short', ttl: 1000, limit: 10 },
-      { name: 'long', ttl: 60000, limit: 100 },
-    ]),
-    DatabaseModule,
-    HealthModule,
-    AuthModule,
-  ],
+  controllers: [AdminController],
+  providers: [AdminService],
+  exports: [AdminService],
 })
-export class AppModule {}
+export class AdminModule {}
