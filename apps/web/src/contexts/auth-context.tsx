@@ -24,20 +24,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // On mount — silently restore session from refresh cookie
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await authApi.refresh();
-        setAccessToken(data.accessToken);
-        const { data: me } = await authApi.me();
-        setUser(me);
-      } catch {
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, []);
+ useEffect(() => {
+  let cancelled = false;
+  (async () => {
+    try {
+      const { data } = await authApi.refresh();
+      if (cancelled) return;
+      setAccessToken(data.accessToken);
+      const { data: me } = await authApi.me();
+      if (cancelled) return;
+      setUser(me);
+    } catch {
+      if (!cancelled) setUser(null);
+    } finally {
+      if (!cancelled) setIsLoading(false);
+    }
+  })();
+  return () => { cancelled = true; };
+}, []);
 
   const login = useCallback(async (identifier: string, password: string) => {
     const { data } = await authApi.login(identifier, password);
