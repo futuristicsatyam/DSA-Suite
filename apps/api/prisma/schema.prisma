@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ─────────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum CategoryType {
+  DSA
+  CP
+  GATE
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum OtpType {
+  EMAIL_VERIFY
+  PHONE_VERIFY
+  RESET_PASSWORD
+}
+
+// ── User ──────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  phone         String   @unique
+  passwordHash  String
+  emailVerified Boolean  @default(false)
+  phoneVerified Boolean  @default(false)
+  role          Role     @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  otps           Otp[]
+  bookmarks      Bookmark[]
+  progress       UserProgress[]
+  recentlyViewed RecentlyViewed[]
+
+  @@map("users")
+}
+
+// ── OTP ───────────────────────────────────────────────────────────────────────
+
+model Otp {
+  id        String   @id @default(cuid())
+  userId    String?
+  target    String
+  type      OtpType
+  code      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("otps")
+}
+
+// ── Subject ───────────────────────────────────────────────────────────────────
+
+model Subject {
+  id           String       @id @default(cuid())
+  name         String
+  slug         String       @unique
+  description  String?
+  categoryType CategoryType
+  orderIndex   Int?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  topics Topic[]
+
+  @@map("subjects")
+}
+
+// ── Topic ─────────────────────────────────────────────────────────────────────
+
+model Topic {
+  id               String     @id @default(cuid())
+  subjectId        String
+  title            String
+  slug             String     @unique
+  shortDescription String?
+  difficulty       Difficulty?
+  orderIndex       Int?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  subject        Subject          @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  editorial      Editorial?
+  bookmarks      Bookmark[]
+  progress       UserProgress[]
+  recentlyViewed RecentlyViewed[]
+
+  @@map("topics")
+}
+
+// ── Editorial ─────────────────────────────────────────────────────────────────
+
+model Editorial {
+  id               String   @id @default(cuid())
+  topicId          String   @unique
+  slug             String   @unique
+  title            String
+  summary          String?
+  markdownContent  String
+  tags             String[]
+  estimatedMinutes Int?
+  published        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  topic     Topic      @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  bookmarks Bookmark[]
+
+  @@map("editorials")
+}
+
+// ── Bookmark ──────────────────────────────────────────────────────────────────
+
+model Bookmark {
+  id          String   @id @default(cuid())
+  userId      String
+  topicId     String?
+  editorialId String?
+  createdAt   DateTime @default(now())
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic     Topic?     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  editorial Editorial? @relation(fields: [editorialId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicId])
+  @@map("bookmarks")
+}
+
+// ── UserProgress ──────────────────────────────────────────────────────────────
+
+model UserProgress {
+  id              String   @id @default(cuid())
+  userId          String
+  topicId         String
+  completed       Boolean  @default(false)
+  progressPercent Int      @default(0)
+  lastViewedAt    DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicId])
+  @@map("user_progress")
+}
+
+// ── RecentlyViewed ────────────────────────────────────────────────────────────
+
+model RecentlyViewed {
+  id       String   @id @default(cuid())
+  userId   String
+  topicId  String
+  viewedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicId])
+  @@map("recently_viewed")
+}
