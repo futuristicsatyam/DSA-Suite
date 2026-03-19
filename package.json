@@ -1,0 +1,25 @@
+{
+  "name": "dsa-suite",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format": "turbo run format",
+    "db:generate": "pnpm --filter @dsa-suite/api exec prisma generate",
+    "db:push": "pnpm --filter @dsa-suite/api exec prisma db push",
+    "db:seed": "pnpm --filter @dsa-suite/api exec prisma db seed",
+    "db:studio": "pnpm --filter @dsa-suite/api exec prisma studio"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.4.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
