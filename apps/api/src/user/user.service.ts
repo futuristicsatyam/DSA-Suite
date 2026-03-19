@@ -44,7 +44,7 @@ export class UserService {
 
     // Continue learning = recently viewed topics (in progress or completed)
     const continueLearning = allProgress
-      .filter(p => p.progressPercent > 0 && !p.completed)
+      .filter(p => p.progressPercent > 0 )
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
       .slice(0, 5);
 
