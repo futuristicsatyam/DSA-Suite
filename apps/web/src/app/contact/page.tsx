@@ -21,7 +21,7 @@ export default function ContactPage() {
             title: 'GitHub',
             desc: 'Report bugs or request features',
             label: 'Open an issue',
-            href: 'https://github.com/dsasuite,
+            href: 'https://github.com/dsasuite',
             color: 'text-gray-700 dark:text-gray-300',
             bg: 'bg-gray-50 dark:bg-gray-900/20',
           },
