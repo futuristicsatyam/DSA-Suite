@@ -15,6 +15,7 @@ import remarkMath from 'remark-math';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSlug from 'rehype-slug';
 import rehypeKatex from 'rehype-katex';
+import { CodeRunner } from '@/components/code-runner';
 
 interface Topic {
   id: string; slug: string; title: string;
@@ -326,6 +327,9 @@ function DsaContent() {
                   {topicData.editorial?.markdownContent ?? PLACEHOLDER}
                 </ReactMarkdown>
               </article>
+
+              {/* Code Playground */}
+              <CodeRunner defaultLang="cpp" />
             </div>
           ) : null}
         </main>
