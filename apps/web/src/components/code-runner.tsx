@@ -63,7 +63,22 @@ int main() {
     label: 'java',
     wandboxCompiler: 'gcc-head',
 
-    template: `Comming Soon`,
+    template: `
+    
+    
+    
+              Comming Soon`,
+  },
+  {
+    id: 'Python',
+    label: 'python',
+    wandboxCompiler: 'gcc-head',
+
+    template: `
+    
+    
+    
+              Comming Soon`,
   },
 ];
 
