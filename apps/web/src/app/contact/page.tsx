@@ -44,7 +44,7 @@ export default function ContactPage() {
             bg: 'bg-blue-50 dark:bg-blue-900/20',
           },
           {
-            // icon: ,
+            icon: MessageSquare ,
             title: 'Whatsapp',
             desc: 'Connect Our whatsapp community',
             label: 'Get Connected',
