@@ -22,7 +22,7 @@ interface Editorial { title: string; markdownContent: string; tags: string[]; es
 interface Progress { topicId: string; completed: boolean; progressPercent: number; }
 
 const DIFF_STYLES = { BEGINNER: 'text-green-600 bg-green-50 dark:bg-green-900/20', INTERMEDIATE: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20', ADVANCED: 'text-red-500 bg-red-50 dark:bg-red-900/20' };
-const PLACEHOLDER = `> [!NOTE]\n> Editorial coming soon for this GATE topic.\n\n## Stay tuned!`;
+const PLACEHOLDER = `> [!NOTE]\n> Editorial coming soon for this topic.\n\n## Stay tuned!`;
 
 function SidebarContent({ subjects, isLoading, selectedSlug, selectTopic, expanded, toggleExpand, completedTopicIds, isAuthenticated }: any) {
   return (
