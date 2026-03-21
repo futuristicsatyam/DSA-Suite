@@ -52,6 +52,15 @@ export default function ContactPage() {
             color: 'text-blue-600',
             bg: 'bg-gray-50 dark:bg-gray-900/20',
           },
+           {
+            icon: MessageSquare ,
+            title: 'Linked In',
+            desc: 'Connect us on Linked In',
+            label: 'follow for regular posts',
+            href: 'https://www.linkedin.com/in/dsa-suite/',
+            color: 'text-blue-800',
+            bg: 'bg-gray-50 dark:bg-gray-900/20',
+          }
         ].map(c => (
           <a key={c.title} href={c.href} target="_blank" rel="noopener noreferrer"
             className="group flex flex-col gap-4 p-6 rounded-xl border border-border bg-card hover:shadow-md transition-all">
