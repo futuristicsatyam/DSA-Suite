@@ -23,13 +23,6 @@ int main() {
     cin.tie(NULL);
 
     // Write your C++ code here
-    vector<int> arr = {5, 3, 8, 1, 9, 2};
-    sort(arr.begin(), arr.end());
-
-    cout << "Sorted: ";
-    for (int x : arr) cout << x << " ";
-    cout << endl;
-
     return 0;
 }`,
   },
@@ -43,20 +36,9 @@ int main() {
     template: `#include <stdio.h>
 #include <stdlib.h>
 
-int cmp(const void *a, const void *b) {
-    return (*(int*)a - *(int*)b);
-}
-
 int main() {
     // Write your C code here
-    int arr[] = {5, 3, 8, 1, 9, 2};
-    int n = sizeof(arr) / sizeof(arr[0]);
-
-    qsort(arr, n, sizeof(int), cmp);
-
-    printf("Sorted: ");
-    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
-    printf("\\n");
+    
 
     return 0;
 }`,
