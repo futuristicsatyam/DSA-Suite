@@ -34,7 +34,7 @@ const DIFF_STYLES = {
 };
 
 const DSA_TABS = [
-  { label: 'Data Structures', slugs: ['arrays','strings','linked-list','stack','queue','tree','graph','dynamic-programming','hashing'] },
+  { label: 'Data Structures', slugs: ['primitive','non-primitive','arrays','strings','linked-list','stack','queue','tree','graph','dynamic-programming','hashing'] },
   { label: 'Algorithms', slugs: ['sorting','binary-search','greedy','two-pointers','sliding-window','divide-and-conquer','bit-manipulation','recursion','backtracking'] },
 ];
 
