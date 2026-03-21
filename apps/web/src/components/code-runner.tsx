@@ -10,9 +10,7 @@ import { cn } from '@/lib/utils';
 // Preferred compilers in order — first match found in Wandbox list wins
 const LANG_PREFERENCES: Record<string, string[]> = {
   cpp: ['gcc-head', 'gcc-13.2.0', 'gcc-12.3.0'],
-  c:   ['gcc-head-c', 'gcc-13.2.0-c', 'gcc-12.3.0-c'],
-  java: ['openjdk-jdk-21+35', 'openjdk-jdk-22+36', 'openjdk-jdk-17+35', 'openjdk-jdk21.0.2+13'],
-  python: ['cpython-3.12.0', 'cpython-3.11.4', 'cpython-3.11.0', 'cpython-3.10.0', 'cpython-3.9.0'],
+  c:   ['gcc-head-c', 'gcc-13.2.0-c', 'gcc-12.3.0-c']
 };
 
 const LANG_CONFIG = [
@@ -58,35 +56,6 @@ int main() {
     printf("\\n");
     return 0;
 }`,
-  },
-  {
-    id: 'java',
-    label: 'Java',
-    color: 'bg-orange-400',
-    template: `import java.util.*;
-
-public class Main {
-    public static void main(String[] args) {
-        // Write your Java code here
-        int[] arr = {5, 3, 8, 1, 9, 2};
-        Integer[] boxed = new Integer[arr.length];
-        for (int i = 0; i < arr.length; i++) boxed[i] = arr[i];
-        Arrays.sort(boxed);
-        System.out.print("Sorted: ");
-        for (int x : boxed) System.out.print(x + " ");
-        System.out.println();
-    }
-}`,
-  },
-  {
-    id: 'python',
-    label: 'Python',
-    color: 'bg-green-400',
-    template: `# Write your Python code here
-arr = [5, 3, 8, 1, 9, 2]
-arr.sort()
-print("Sorted:", *arr)
-`,
   },
 ];
 
