@@ -11,22 +11,14 @@ const LANGUAGES = [
   {
     id: 'cpp',
     label: 'C++',
+    color: 'bg-blue-400',
     wandboxCompiler: 'gcc-head',
-
     template: `#include <bits/stdc++.h>
 using namespace std;
 
 int main() {
-    ios_base::sync_with_stdio(false);
-    cin.tie(NULL);
 
     // Write your C++ code here
-    vector<int> arr = {5, 3, 8, 1, 9, 2};
-    sort(arr.begin(), arr.end());
-
-    cout << "Sorted: ";
-    for (int x : arr) cout << x << " ";
-    cout << endl;
 
     return 0;
 }`,
@@ -34,8 +26,8 @@ int main() {
   {
     id: 'c',
     label: 'C',
+    color: 'bg-yellow-400',
     wandboxCompiler: 'gcc-head-c',
-
     template: `#include <stdio.h>
 #include <stdlib.h>
 
@@ -45,17 +37,30 @@ int cmp(const void *a, const void *b) {
 
 int main() {
     // Write your C code here
-    int arr[] = {5, 3, 8, 1, 9, 2};
-    int n = sizeof(arr) / sizeof(arr[0]);
-
-    qsort(arr, n, sizeof(int), cmp);
-
-    printf("Sorted: ");
-    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
-    printf("\\n");
-
+    
     return 0;
 }`,
+  },
+  {
+    id: 'java',
+    label: 'Java',
+    color: 'bg-orange-400',
+    wandboxCompiler: 'openjdk-head',
+    template: `import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        // Write your Java code here
+
+    }
+}`,
+  },
+  {
+    id: 'python',
+    label: 'Python',
+    color: 'bg-green-400',
+    wandboxCompiler: 'cpython-head',
+    template: `# Write your Python code here,
   },
 ];
 
@@ -77,36 +82,25 @@ async function runWithWandbox(
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) {
-    throw new Error(`Wandbox responded with HTTP ${res.status}`);
-  }
+  if (!res.ok) throw new Error(`Wandbox HTTP ${res.status}`);
 
   const data = await res.json();
-
-  // Wandbox returns: status (exit code), program_output, program_error, compiler_error, compiler_message
-  const compileError = (data.compiler_error || '').trim();
-  const programOutput = (data.program_output || '').trim();
-  const programError = (data.program_error || '').trim();
-
   return {
-    output: programOutput,
-    error: programError,
-    compileError,
+    output: (data.program_output || '').trim(),
+    error: (data.program_error || '').trim(),
+    compileError: (data.compiler_error || '').trim(),
   };
 }
 
 interface CodeRunnerProps {
   defaultCode?: string;
-  defaultLang?: 'c' | 'cpp';
+  defaultLang?: 'c' | 'cpp' | 'java' | 'python';
 }
 
 export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps) {
-  const [selectedLang, setSelectedLang] = useState(
-    LANGUAGES.find(l => l.id === defaultLang) || LANGUAGES[0]
-  );
-  const [code, setCode] = useState(
-    defaultCode || (LANGUAGES.find(l => l.id === defaultLang) || LANGUAGES[0]).template
-  );
+  const initLang = LANGUAGES.find(l => l.id === defaultLang) || LANGUAGES[0];
+  const [selectedLang, setSelectedLang] = useState(initLang);
+  const [code, setCode] = useState(defaultCode || initLang.template);
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
@@ -130,34 +124,31 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
     }
   };
 
+  const clearState = () => {
+    setOutput(''); setError(''); setCompileError(''); setRuntime(null);
+  };
+
   const handleLangChange = (lang: typeof LANGUAGES[0]) => {
     setSelectedLang(lang);
     setCode(defaultCode || lang.template);
-    setOutput(''); setError(''); setCompileError(''); setRuntime(null);
+    clearState();
     setShowLangMenu(false);
   };
 
   const handleRun = async () => {
     if (isRunning) return;
     setIsRunning(true);
-    setOutput(''); setError(''); setCompileError(''); setRuntime(null);
+    clearState();
     const startTime = Date.now();
-
     try {
-      const result = await runWithWandbox(
-        selectedLang.wandboxCompiler,
-        code,
-        input,
-      );
+      const result = await runWithWandbox(selectedLang.wandboxCompiler, code, input);
       setRuntime(Date.now() - startTime);
       setOutput(result.output);
       setError(result.error);
       setCompileError(result.compileError);
     } catch (err: any) {
       setRuntime(Date.now() - startTime);
-      setError(
-        `Could not reach the compiler (Wandbox).\n\nThis may be a temporary outage. Please try again in a moment.\n\nDetails: ${err?.message || String(err)}`
-      );
+      setError(`Could not reach Wandbox compiler.\nPlease try again in a moment.\n\nDetails: ${err?.message || String(err)}`);
     } finally {
       setIsRunning(false);
     }
@@ -173,12 +164,13 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
       e.preventDefault();
       const start = e.currentTarget.selectionStart;
       const end = e.currentTarget.selectionEnd;
-      const newCode = code.substring(0, start) + '    ' + code.substring(end);
+      const indent = selectedLang.id === 'python' ? '    ' : '    ';
+      const newCode = code.substring(0, start) + indent + code.substring(end);
       setCode(newCode);
       setTimeout(() => {
         if (textareaRef.current) {
-          textareaRef.current.selectionStart = start + 4;
-          textareaRef.current.selectionEnd = start + 4;
+          textareaRef.current.selectionStart = start + indent.length;
+          textareaRef.current.selectionEnd = start + indent.length;
         }
       }, 0);
     }
@@ -192,7 +184,7 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
 
   const handleReset = () => {
     setCode(defaultCode || selectedLang.template);
-    setOutput(''); setError(''); setCompileError(''); setRuntime(null);
+    clearState();
   };
 
   const hasResult = output || error || compileError || isRunning;
@@ -213,24 +205,23 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
               onClick={() => setShowLangMenu(o => !o)}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 transition-colors"
             >
-              <span className={cn('w-2 h-2 rounded-full flex-shrink-0',
-                selectedLang.id === 'cpp' ? 'bg-blue-400' : 'bg-yellow-400'
-              )} />
+              <span className={cn('w-2 h-2 rounded-full flex-shrink-0', selectedLang.color)} />
               {selectedLang.label}
               <ChevronDown className="w-3 h-3 text-zinc-500" />
             </button>
             {showLangMenu && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowLangMenu(false)} />
-                <div className="absolute left-0 top-full mt-1 z-20 bg-zinc-800 border border-white/10 rounded-lg overflow-hidden shadow-xl min-w-[90px]">
+                <div className="absolute left-0 top-full mt-1 z-20 bg-zinc-800 border border-white/10 rounded-lg overflow-hidden shadow-xl min-w-[110px]">
                   {LANGUAGES.map(lang => (
                     <button key={lang.id} onClick={() => handleLangChange(lang)}
-                      className={cn('w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors',
+                      className={cn(
+                        'w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors',
                         selectedLang.id === lang.id
                           ? 'bg-indigo-600 text-white'
-                          : 'text-zinc-300 hover:bg-zinc-700')}>
-                      <span className={cn('w-2 h-2 rounded-full',
-                        lang.id === 'cpp' ? 'bg-blue-400' : 'bg-yellow-400')} />
+                          : 'text-zinc-300 hover:bg-zinc-700'
+                      )}>
+                      <span className={cn('w-2 h-2 rounded-full flex-shrink-0', lang.color)} />
                       {lang.label}
                     </button>
                   ))}
@@ -336,8 +327,8 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
             ) : (
               <>
                 {compileError && (
-                  <div>
-                    <p className="text-xs text-zinc-500 mb-1 font-semibold">Compile error:</p>
+                  <div className="mb-2">
+                    <p className="text-xs text-zinc-500 mb-1 font-semibold uppercase tracking-wide">Compile error</p>
                     <pre className="text-red-400 font-mono text-xs leading-6 whitespace-pre-wrap">{compileError}</pre>
                   </div>
                 )}
@@ -364,7 +355,7 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
             className="text-zinc-500 hover:text-zinc-300 transition-colors">
             Wandbox
           </a>
-          {' '}· GCC (latest)
+          {' '}· GCC / OpenJDK / CPython (latest)
         </span>
         <span className="text-xs text-zinc-600">
           {lineCount} lines · {code.length} chars
