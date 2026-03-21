@@ -17,8 +17,16 @@ const LANGUAGES = [
 using namespace std;
 
 int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
 
     // Write your C++ code here
+    vector<int> arr = {5, 3, 8, 1, 9, 2};
+    sort(arr.begin(), arr.end());
+
+    cout << "Sorted: ";
+    for (int x : arr) cout << x << " ";
+    cout << endl;
 
     return 0;
 }`,
@@ -37,7 +45,15 @@ int cmp(const void *a, const void *b) {
 
 int main() {
     // Write your C code here
-    
+    int arr[] = {5, 3, 8, 1, 9, 2};
+    int n = sizeof(arr) / sizeof(arr[0]);
+
+    qsort(arr, n, sizeof(int), cmp);
+
+    printf("Sorted: ");
+    for (int i = 0; i < n; i++) printf("%d ", arr[i]);
+    printf("\\n");
+
     return 0;
 }`,
   },
@@ -51,7 +67,13 @@ int main() {
 public class Main {
     public static void main(String[] args) {
         // Write your Java code here
+        int[] arr = {5, 3, 8, 1, 9, 2};
 
+        Arrays.sort(arr);
+
+        System.out.print("Sorted: ");
+        for (int x : arr) System.out.print(x + " ");
+        System.out.println();
     }
 }`,
   },
@@ -60,7 +82,13 @@ public class Main {
     label: 'Python',
     color: 'bg-green-400',
     wandboxCompiler: 'cpython-head',
-    template: `# Write your Python code here,
+    template: `# Write your Python code here
+arr = [5, 3, 8, 1, 9, 2]
+
+arr.sort()
+
+print("Sorted:", *arr)
+`,
   },
 ];
 
@@ -82,7 +110,7 @@ async function runWithWandbox(
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) throw new Error(`Wandbox HTTP ${res.status}`);
+  if (!res.ok) throw new Error('Wandbox HTTP ' + res.status);
 
   const data = await res.json();
   return {
@@ -148,7 +176,7 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
       setCompileError(result.compileError);
     } catch (err: any) {
       setRuntime(Date.now() - startTime);
-      setError(`Could not reach Wandbox compiler.\nPlease try again in a moment.\n\nDetails: ${err?.message || String(err)}`);
+      setError('Could not reach Wandbox compiler.\nPlease try again in a moment.\n\nDetails: ' + (err?.message || String(err)));
     } finally {
       setIsRunning(false);
     }
