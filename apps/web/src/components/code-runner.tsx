@@ -12,7 +12,7 @@ const LANGUAGES = [
     id: 'cpp',
     label: 'C++',
     wandboxCompiler: 'gcc-head',
-    wandboxOptions: 'warning,gnu++17',
+
     template: `#include <bits/stdc++.h>
 using namespace std;
 
@@ -35,7 +35,7 @@ int main() {
     id: 'c',
     label: 'C',
     wandboxCompiler: 'gcc-head-c',
-    wandboxOptions: 'warning,gnu11',
+
     template: `#include <stdio.h>
 #include <stdlib.h>
 
@@ -61,14 +61,13 @@ int main() {
 
 async function runWithWandbox(
   compiler: string,
-  options: string,
   code: string,
   stdin: string
 ): Promise<{ output: string; error: string; compileError: string }> {
   const body: Record<string, string> = {
     compiler,
     code,
-    'compiler-option-raw': options,
+    options: 'warning',
   };
   if (stdin.trim()) body.stdin = stdin;
 
@@ -147,7 +146,6 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
     try {
       const result = await runWithWandbox(
         selectedLang.wandboxCompiler,
-        selectedLang.wandboxOptions,
         code,
         input,
       );
