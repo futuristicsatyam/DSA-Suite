@@ -7,17 +7,12 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Preferred compilers in order — first match found in Wandbox list wins
-const LANG_PREFERENCES: Record<string, string[]> = {
-  cpp: ['gcc-head', 'gcc-13.2.0', 'gcc-12.3.0'],
-  c:   ['gcc-head-c', 'gcc-13.2.0-c', 'gcc-12.3.0-c']
-};
-
-const LANG_CONFIG = [
+const LANGUAGES = [
   {
     id: 'cpp',
     label: 'C++',
-    color: 'bg-blue-400',
+    wandboxCompiler: 'gcc-head',
+
     template: `#include <bits/stdc++.h>
 using namespace std;
 
@@ -39,7 +34,8 @@ int main() {
   {
     id: 'c',
     label: 'C',
-    color: 'bg-yellow-400',
+    wandboxCompiler: 'gcc-head-c',
+
     template: `#include <stdio.h>
 #include <stdlib.h>
 
@@ -48,26 +44,69 @@ int cmp(const void *a, const void *b) {
 }
 
 int main() {
+    // Write your C code here
     int arr[] = {5, 3, 8, 1, 9, 2};
     int n = sizeof(arr) / sizeof(arr[0]);
+
     qsort(arr, n, sizeof(int), cmp);
+
     printf("Sorted: ");
     for (int i = 0; i < n; i++) printf("%d ", arr[i]);
     printf("\\n");
+
     return 0;
 }`,
   },
 ];
 
+async function runWithWandbox(
+  compiler: string,
+  code: string,
+  stdin: string
+): Promise<{ output: string; error: string; compileError: string }> {
+  const body: Record<string, string> = {
+    compiler,
+    code,
+    options: 'warning',
+  };
+  if (stdin.trim()) body.stdin = stdin;
+
+  const res = await fetch('https://wandbox.org/api/compile.json', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Wandbox responded with HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+
+  // Wandbox returns: status (exit code), program_output, program_error, compiler_error, compiler_message
+  const compileError = (data.compiler_error || '').trim();
+  const programOutput = (data.program_output || '').trim();
+  const programError = (data.program_error || '').trim();
+
+  return {
+    output: programOutput,
+    error: programError,
+    compileError,
+  };
+}
+
 interface CodeRunnerProps {
   defaultCode?: string;
-  defaultLang?: 'c' | 'cpp' | 'java' | 'python';
+  defaultLang?: 'c' | 'cpp';
 }
 
 export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps) {
-  const initLang = LANG_CONFIG.find(l => l.id === defaultLang) || LANG_CONFIG[0];
-  const [selectedLang, setSelectedLang] = useState(initLang);
-  const [code, setCode] = useState(defaultCode || initLang.template);
+  const [selectedLang, setSelectedLang] = useState(
+    LANGUAGES.find(l => l.id === defaultLang) || LANGUAGES[0]
+  );
+  const [code, setCode] = useState(
+    defaultCode || (LANGUAGES.find(l => l.id === defaultLang) || LANGUAGES[0]).template
+  );
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
@@ -78,33 +117,8 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const [lineCount, setLineCount] = useState(1);
-  // Map of langId -> resolved wandbox compiler name
-  const [resolvedCompilers, setResolvedCompilers] = useState<Record<string, string>>({});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
-
-  // Resolve compiler names from Wandbox list on mount
-  useEffect(() => {
-    fetch('https://wandbox.org/api/list.json')
-      .then(r => r.json())
-      .then((list: Array<{ name: string; language: string }>) => {
-        const names = new Set(list.map((c) => c.name));
-        const resolved: Record<string, string> = {};
-        for (const [langId, prefs] of Object.entries(LANG_PREFERENCES)) {
-          const found = prefs.find(p => names.has(p));
-          if (found) resolved[langId] = found;
-        }
-        setResolvedCompilers(resolved);
-      })
-      .catch(() => {
-        // If list fetch fails, fall back to first preference
-        const fallback: Record<string, string> = {};
-        for (const [langId, prefs] of Object.entries(LANG_PREFERENCES)) {
-          fallback[langId] = prefs[0];
-        }
-        setResolvedCompilers(fallback);
-      });
-  }, []);
 
   useEffect(() => {
     setLineCount(code.split('\n').length);
@@ -116,61 +130,34 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
     }
   };
 
-  const clearState = () => {
-    setOutput(''); setError(''); setCompileError(''); setRuntime(null);
-  };
-
-  const handleLangChange = (lang: typeof LANG_CONFIG[0]) => {
+  const handleLangChange = (lang: typeof LANGUAGES[0]) => {
     setSelectedLang(lang);
     setCode(defaultCode || lang.template);
-    clearState();
+    setOutput(''); setError(''); setCompileError(''); setRuntime(null);
     setShowLangMenu(false);
   };
 
   const handleRun = async () => {
     if (isRunning) return;
     setIsRunning(true);
-    clearState();
+    setOutput(''); setError(''); setCompileError(''); setRuntime(null);
     const startTime = Date.now();
 
-    const compiler = resolvedCompilers[selectedLang.id] || LANG_PREFERENCES[selectedLang.id][0];
-    const isClike = selectedLang.id === 'c' || selectedLang.id === 'cpp';
-
     try {
-        const filename =
-        selectedLang.id === 'java' ? 'Main.java' :
-        selectedLang.id === 'python' ? 'main.py' :
-        selectedLang.id === 'cpp' ? 'main.cpp' : 'main.c';
-
-      // Use 'files' array format so Wandbox saves with the correct filename
-      // This is required for Java (public class Main must be in Main.java)
-      const payload: Record<string, any> = {
-        compiler,
-        files: [{ file: filename, code }],
-      };
-      if (isClike) payload['options'] = 'warning';
-      if (input.trim()) payload['stdin'] = input;
-
-      const res = await fetch('https://wandbox.org/api/compile.json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
+      const result = await runWithWandbox(
+        selectedLang.wandboxCompiler,
+        code,
+        input,
+      );
       setRuntime(Date.now() - startTime);
-
-      if (!res.ok) {
-        setError('Compiler request failed (HTTP ' + res.status + '). Compiler used: ' + compiler + '. Please try again.');
-        return;
-      }
-
-      const data = await res.json();
-      setOutput((data.program_output || '').trim());
-      setError((data.program_error || '').trim());
-      setCompileError((data.compiler_error || '').trim());
+      setOutput(result.output);
+      setError(result.error);
+      setCompileError(result.compileError);
     } catch (err: any) {
       setRuntime(Date.now() - startTime);
-      setError('Could not reach Wandbox.\nPlease check your internet connection.\n\nDetails: ' + (err?.message || String(err)));
+      setError(
+        `Could not reach the compiler (Wandbox).\n\nThis may be a temporary outage. Please try again in a moment.\n\nDetails: ${err?.message || String(err)}`
+      );
     } finally {
       setIsRunning(false);
     }
@@ -205,12 +192,11 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
 
   const handleReset = () => {
     setCode(defaultCode || selectedLang.template);
-    clearState();
+    setOutput(''); setError(''); setCompileError(''); setRuntime(null);
   };
 
   const hasResult = output || error || compileError || isRunning;
   const hasError = error || compileError;
-  const resolvedName = resolvedCompilers[selectedLang.id];
 
   return (
     <div className="rounded-xl border border-border overflow-hidden bg-zinc-950 mt-8">
@@ -227,23 +213,24 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
               onClick={() => setShowLangMenu(o => !o)}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 transition-colors"
             >
-              <span className={cn('w-2 h-2 rounded-full flex-shrink-0', selectedLang.color)} />
+              <span className={cn('w-2 h-2 rounded-full flex-shrink-0',
+                selectedLang.id === 'cpp' ? 'bg-blue-400' : 'bg-yellow-400'
+              )} />
               {selectedLang.label}
               <ChevronDown className="w-3 h-3 text-zinc-500" />
             </button>
             {showLangMenu && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowLangMenu(false)} />
-                <div className="absolute left-0 top-full mt-1 z-20 bg-zinc-800 border border-white/10 rounded-lg overflow-hidden shadow-xl min-w-[110px]">
-                  {LANG_CONFIG.map(lang => (
+                <div className="absolute left-0 top-full mt-1 z-20 bg-zinc-800 border border-white/10 rounded-lg overflow-hidden shadow-xl min-w-[90px]">
+                  {LANGUAGES.map(lang => (
                     <button key={lang.id} onClick={() => handleLangChange(lang)}
-                      className={cn(
-                        'w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors',
+                      className={cn('w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors',
                         selectedLang.id === lang.id
                           ? 'bg-indigo-600 text-white'
-                          : 'text-zinc-300 hover:bg-zinc-700'
-                      )}>
-                      <span className={cn('w-2 h-2 rounded-full flex-shrink-0', lang.color)} />
+                          : 'text-zinc-300 hover:bg-zinc-700')}>
+                      <span className={cn('w-2 h-2 rounded-full',
+                        lang.id === 'cpp' ? 'bg-blue-400' : 'bg-yellow-400')} />
                       {lang.label}
                     </button>
                   ))}
@@ -251,15 +238,10 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
               </>
             )}
           </div>
-
-          {/* Show resolved compiler name */}
-          {resolvedName && (
-            <span className="text-xs text-zinc-600 hidden sm:block">{resolvedName}</span>
-          )}
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-600 hidden md:block">Ctrl+Enter to run</span>
+          <span className="text-xs text-zinc-600 hidden sm:block">Ctrl+Enter to run</span>
           <button onClick={handleCopy} title="Copy code"
             className="p-1.5 rounded-md hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors">
             {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -279,6 +261,7 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
 
       {/* ── Editor ── */}
       <div className="relative flex" style={{ minHeight: '260px', maxHeight: '460px' }}>
+        {/* Line numbers */}
         <div ref={lineNumbersRef}
           className="flex-shrink-0 w-10 bg-zinc-950 border-r border-white/5 overflow-hidden select-none"
           style={{ overflowY: 'hidden' }}>
@@ -291,6 +274,8 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
             ))}
           </div>
         </div>
+
+        {/* Code textarea */}
         <textarea
           ref={textareaRef}
           value={code}
@@ -325,20 +310,23 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
       {/* ── Output ── */}
       {hasResult && (
         <div className="border-t border-white/10">
-          <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border-b border-white/10">
-            {isRunning
-              ? <Loader2 className="w-3.5 h-3.5 text-zinc-400 animate-spin" />
-              : hasError
-                ? <AlertCircle className="w-3.5 h-3.5 text-red-400" />
-                : <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
-            }
-            <span className="text-xs font-medium text-zinc-300">
-              {isRunning ? 'Compiling & running…' : hasError ? 'Error' : 'Output'}
-            </span>
-            {runtime !== null && !isRunning && (
-              <span className="text-xs text-zinc-600">{runtime}ms</span>
-            )}
+          <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              {isRunning
+                ? <Loader2 className="w-3.5 h-3.5 text-zinc-400 animate-spin" />
+                : hasError
+                  ? <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                  : <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+              }
+              <span className="text-xs font-medium text-zinc-300">
+                {isRunning ? 'Compiling & running…' : hasError ? 'Error' : 'Output'}
+              </span>
+              {runtime !== null && !isRunning && (
+                <span className="text-xs text-zinc-600">{runtime}ms</span>
+              )}
+            </div>
           </div>
+
           <div className="bg-zinc-950 px-4 py-3 overflow-auto" style={{ maxHeight: '220px' }}>
             {isRunning && !output && !hasError ? (
               <div className="flex items-center gap-2 text-zinc-500 text-xs">
@@ -348,8 +336,8 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
             ) : (
               <>
                 {compileError && (
-                  <div className="mb-2">
-                    <p className="text-xs text-zinc-500 mb-1 font-semibold uppercase tracking-wide">Compile error</p>
+                  <div>
+                    <p className="text-xs text-zinc-500 mb-1 font-semibold">Compile error:</p>
                     <pre className="text-red-400 font-mono text-xs leading-6 whitespace-pre-wrap">{compileError}</pre>
                   </div>
                 )}
@@ -376,8 +364,11 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
             className="text-zinc-500 hover:text-zinc-300 transition-colors">
             Wandbox
           </a>
+          {' '}· GCC (latest)
         </span>
-        <span className="text-xs text-zinc-600">{lineCount} lines · {code.length} chars</span>
+        <span className="text-xs text-zinc-600">
+          {lineCount} lines · {code.length} chars
+        </span>
       </div>
     </div>
   );
