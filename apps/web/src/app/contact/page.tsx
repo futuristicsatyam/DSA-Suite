@@ -29,7 +29,7 @@ export default function ContactPage() {
             icon: Mail,
             title: 'Email',
             desc: 'For general enquiries',
-            label: 'admin@dsasuite.com',
+            label: 'dsasuite@gmail.com',
             href: 'mailto:dsasuite@gmail.com',
             color: 'text-indigo-600',
             bg: 'bg-indigo-50 dark:bg-indigo-900/20',
@@ -44,7 +44,7 @@ export default function ContactPage() {
             bg: 'bg-blue-50 dark:bg-blue-900/20',
           },
           {
-            icon: ,
+            // icon: ,
             title: 'Whatsapp',
             desc: 'Connect Our whatsapp community',
             label: 'Get Connected',
