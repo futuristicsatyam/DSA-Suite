@@ -168,14 +168,23 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
     const isClike = selectedLang.id === 'c' || selectedLang.id === 'cpp';
 
     try {
-      const body: Record<string, string> = { compiler, code };
-      if (isClike) body['options'] = 'warning';
-      if (input.trim()) body['stdin'] = input;
+        const filename =
+        selectedLang.id === 'java' ? 'Main.java' :
+        selectedLang.id === 'python' ? 'main.py' :
+        selectedLang.id === 'cpp' ? 'main.cpp' : 'main.c';
+
+      const payload: Record<string, any> = {
+        compiler,
+        code,
+        filename,
+      };
+      if (isClike) payload['options'] = 'warning';
+      if (input.trim()) payload['stdin'] = input;
 
       const res = await fetch('https://wandbox.org/api/compile.json', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       });
 
       setRuntime(Date.now() - startTime);
