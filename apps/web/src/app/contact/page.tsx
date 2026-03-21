@@ -43,6 +43,15 @@ export default function ContactPage() {
             color: 'text-blue-600',
             bg: 'bg-blue-50 dark:bg-blue-900/20',
           },
+          {
+            icon: message-circle,
+            title: 'Whatsapp',
+            desc: 'Connect Our whatsapp community',
+            label: 'Get Connected',
+            href: 'https://chat.whatsapp.com/CTXI4iXLhXn8cjzZ1UXMKO?mode=gi_t',
+            color: 'text-gray-700 dark:text-gray-300',
+            bg: 'bg-gray-50 dark:bg-gray-900/20',
+          },
         ].map(c => (
           <a key={c.title} href={c.href} target="_blank" rel="noopener noreferrer"
             className="group flex flex-col gap-4 p-6 rounded-xl border border-border bg-card hover:shadow-md transition-all">
