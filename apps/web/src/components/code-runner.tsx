@@ -12,7 +12,7 @@ const LANG_PREFERENCES: Record<string, string[]> = {
   cpp: ['gcc-head', 'gcc-13.2.0', 'gcc-12.3.0'],
   c:   ['gcc-head-c', 'gcc-13.2.0-c', 'gcc-12.3.0-c'],
   java: ['openjdk-jdk-21+35', 'openjdk-jdk-22+36', 'openjdk-jdk-17+35', 'openjdk-jdk21.0.2+13'],
-  python: ['cpython-3.12.0', 'cpython-3.11.0', 'cpython-3.10.0', 'cpython-head'],
+  python: ['cpython-3.12.0', 'cpython-3.11.4', 'cpython-3.11.0', 'cpython-3.10.0', 'cpython-3.9.0'],
 };
 
 const LANG_CONFIG = [
@@ -173,10 +173,11 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
         selectedLang.id === 'python' ? 'main.py' :
         selectedLang.id === 'cpp' ? 'main.cpp' : 'main.c';
 
+      // Use 'files' array format so Wandbox saves with the correct filename
+      // This is required for Java (public class Main must be in Main.java)
       const payload: Record<string, any> = {
         compiler,
-        code,
-        filename,
+        files: [{ file: filename, code }],
       };
       if (isClike) payload['options'] = 'warning';
       if (input.trim()) payload['stdin'] = input;
