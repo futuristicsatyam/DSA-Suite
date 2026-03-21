@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Mail, Github, MessageSquare, BookOpen, ArrowRight } from 'lucide-react';
+import { Mail, Github, MessageSquare, BookOpen, ArrowRight, } from 'lucide-react';
 
 export default function ContactPage() {
   return (
@@ -44,7 +44,7 @@ export default function ContactPage() {
             bg: 'bg-blue-50 dark:bg-blue-900/20',
           },
           {
-            icon: message-circle,
+            icon: ,
             title: 'Whatsapp',
             desc: 'Connect Our whatsapp community',
             label: 'Get Connected',
