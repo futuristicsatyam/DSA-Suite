@@ -57,6 +57,14 @@ int main() {
     return 0;
 }`,
   },
+
+  {
+    id: 'Java',
+    label: 'java',
+    wandboxCompiler: 'gcc-head',
+
+    template: `Comming Soon`,
+  },
 ];
 
 async function runWithWandbox(
