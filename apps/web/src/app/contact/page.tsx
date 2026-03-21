@@ -49,7 +49,7 @@ export default function ContactPage() {
             desc: 'Connect Our whatsapp community',
             label: 'Get Connected',
             href: 'https://chat.whatsapp.com/CTXI4iXLhXn8cjzZ1UXMKO?mode=gi_t',
-            color: 'text-green-600',
+            color: 'text-blue-600',
             bg: 'bg-gray-50 dark:bg-gray-900/20',
           },
         ].map(c => (
