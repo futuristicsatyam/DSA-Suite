@@ -2,11 +2,12 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Shield, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, apiError, cn } from '@/lib/utils';
+import { Pagination } from '@/components/pagination';
 
 interface UserItem {
   id: string; name: string; email: string; phone: string;
@@ -14,19 +15,50 @@ interface UserItem {
   role: 'USER' | 'ADMIN'; createdAt: string;
 }
 
+interface UsersResponse {
+  data: UserItem[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+const LIMIT = 20;
+
 export default function UsersPage() {
   const qc = useQueryClient();
+
+  // searchInput drives the text box; search is the debounced value sent to the API.
+  // This avoids firing a new request on every single keystroke.
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSearch(value);
+      setPage(1); // reset to page 1 whenever search changes
+    }, 300);
+  };
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-users', search],
-    queryFn: () => api.get(`/admin/users${search ? `?search=${search}` : ''}`).then(r => r.data as { data: UserItem[]; total: number }),
+    queryKey: ['admin-users', search, page],
+    queryFn: () =>
+      api
+        .get('/admin/users', { params: { search: search || undefined, page, limit: LIMIT } })
+        .then(r => r.data as UsersResponse),
+    staleTime: 30_000,
   });
 
   const roleMutation = useMutation({
     mutationFn: ({ id, role }: { id: string; role: 'USER' | 'ADMIN' }) =>
       api.patch(`/admin/users/${id}/role`, { role }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-users'] }); toast.success('Role updated!'); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      toast.success('Role updated!');
+    },
     onError: (err) => toast.error(apiError(err)),
   });
 
@@ -41,14 +73,16 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">Users</h1>
-          <p className="text-muted-foreground text-sm">{data?.total ?? 0} registered users</p>
+          <p className="text-muted-foreground text-sm">
+            {data?.total ?? 0} registered users
+          </p>
         </div>
       </div>
 
-      {/* Search */}
+      {/* Search — server-side, debounced 300ms */}
       <input
-        value={search}
-        onChange={e => setSearch(e.target.value)}
+        value={searchInput}
+        onChange={e => handleSearchChange(e.target.value)}
         placeholder="Search by name or email..."
         className="w-full max-w-sm h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
@@ -73,10 +107,13 @@ export default function UsersPage() {
             <tbody className="divide-y divide-border">
               {(data?.data ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">No users found</td>
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                    No users found
+                  </td>
                 </tr>
               ) : (data?.data ?? []).map(user => (
                 <tr key={user.id} className="hover:bg-muted/30 transition-colors">
+
                   {/* User */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -113,7 +150,7 @@ export default function UsersPage() {
                       'flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium w-fit',
                       user.role === 'ADMIN'
                         ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-                        : 'bg-secondary text-muted-foreground'
+                        : 'bg-secondary text-muted-foreground',
                     )}>
                       {user.role === 'ADMIN'
                         ? <><Shield className="w-3 h-3" /> Admin</>
@@ -125,7 +162,7 @@ export default function UsersPage() {
                   {/* Joined */}
                   <td className="px-4 py-3 text-muted-foreground text-xs">
                     {new Date(user.createdAt).toLocaleDateString('en-IN', {
-                      day: 'numeric', month: 'short', year: 'numeric'
+                      day: 'numeric', month: 'short', year: 'numeric',
                     })}
                   </td>
 
@@ -138,7 +175,7 @@ export default function UsersPage() {
                         'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50',
                         user.role === 'ADMIN'
                           ? 'border border-border hover:bg-accent text-muted-foreground'
-                          : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40'
+                          : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40',
                       )}
                     >
                       {roleMutation.isPending ? (
@@ -154,6 +191,17 @@ export default function UsersPage() {
               ))}
             </tbody>
           </table>
+
+          {/* Pagination sits inside the border, below the table */}
+          <div className="px-4">
+            <Pagination
+              page={page}
+              totalPages={data?.totalPages ?? 1}
+              total={data?.total ?? 0}
+              limit={LIMIT}
+              onPageChange={setPage}
+            />
+          </div>
         </div>
       )}
     </div>
