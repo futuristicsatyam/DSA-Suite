@@ -33,6 +33,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Get all subjects' })
   @ApiQuery({ name: 'categoryType', required: false, enum: CategoryType })
   getSubjects(@Query('categoryType') categoryType?: CategoryType) {
+    // Subjects are few (< 30) — no pagination needed
     return this.adminService.getSubjects(categoryType);
   }
 
@@ -57,10 +58,16 @@ export class AdminController {
 
   // ── Topics ────────────────────────────────────────────────────────────────
   @Get('topics')
-  @ApiOperation({ summary: 'Get all topics' })
+  @ApiOperation({ summary: 'Get all topics (paginated)' })
   @ApiQuery({ name: 'subjectId', required: false })
-  getTopics(@Query('subjectId') subjectId?: string) {
-    return this.adminService.getTopics(subjectId);
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  getTopics(
+    @Query('subjectId') subjectId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.getTopics(subjectId, Number(page) || 1, Number(limit) || 20);
   }
 
   @Post('topics')
@@ -84,11 +91,17 @@ export class AdminController {
 
   // ── Editorials ────────────────────────────────────────────────────────────
   @Get('editorials')
-  @ApiOperation({ summary: 'Get all editorials' })
+  @ApiOperation({ summary: 'Get all editorials (paginated)' })
   @ApiQuery({ name: 'published', required: false, type: Boolean })
-  getEditorials(@Query('published') published?: string) {
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  getEditorials(
+    @Query('published') published?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     const pub = published === undefined ? undefined : published === 'true';
-    return this.adminService.getEditorials(pub);
+    return this.adminService.getEditorials(pub, Number(page) || 1, Number(limit) || 20);
   }
 
   @Get('editorials/:id')
@@ -118,10 +131,16 @@ export class AdminController {
 
   // ── Users ─────────────────────────────────────────────────────────────────
   @Get('users')
-  @ApiOperation({ summary: 'Get all users' })
+  @ApiOperation({ summary: 'Get all users (paginated)' })
   @ApiQuery({ name: 'search', required: false })
-  getUsers(@Query('search') search?: string) {
-    return this.adminService.getUsers(search);
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  getUsers(
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.getUsers(search, Number(page) || 1, Number(limit) || 20);
   }
 
   @Patch('users/:id/role')
