@@ -8,6 +8,12 @@ import { Plus, Pencil, Trash2, Loader2, X, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, apiError, cn } from '@/lib/utils';
 import { Pagination } from '@/components/pagination';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeHighlight from 'rehype-highlight';
+import rehypeSlug from 'rehype-slug';
+import rehypeKatex from 'rehype-katex';
 
 interface Editorial {
   id: string; slug: string; title: string;
@@ -32,6 +38,61 @@ const emptyForm = {
   markdownContent: '# Title\n\nContent here...', tags: '',
   estimatedMinutes: '', published: false,
 };
+
+// ── Markdown preview — identical config to dsa/page.tsx ───────────────────
+function MarkdownPreview({ content }: { content: string }) {
+  return (
+    <article className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-a:text-indigo-600 prose-code:text-indigo-600 prose-code:bg-indigo-50 dark:prose-code:bg-indigo-950/30 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-pre:p-0 prose-pre:bg-transparent">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeHighlight, rehypeSlug, rehypeKatex]}
+        components={{
+          pre({ children, ...props }) {
+            const code = (children as React.ReactElement)?.props;
+            return (
+              <div className="relative my-4 rounded-xl overflow-hidden border border-border">
+                <div className="flex items-center px-4 py-2 bg-zinc-900 border-b border-white/10">
+                  <span className="text-xs text-zinc-400 font-mono">
+                    {code?.className?.replace('language-', '') || 'code'}
+                  </span>
+                </div>
+                <pre {...props} className="!m-0 !rounded-none !bg-zinc-950 overflow-x-auto p-4 text-sm">
+                  {children}
+                </pre>
+              </div>
+            );
+          },
+          blockquote({ children, ...props }) {
+            const text = String((children as React.ReactElement[])?.[0]?.props?.children ?? '');
+            const type = text.match(/^\[!(NOTE|TIP|WARNING|IMPORTANT)\]/i)?.[1]?.toUpperCase();
+            const styles: Record<string, string> = {
+              NOTE:      'border-blue-400 bg-blue-50 dark:bg-blue-950/20',
+              TIP:       'border-green-400 bg-green-50 dark:bg-green-950/20',
+              WARNING:   'border-yellow-400 bg-yellow-50 dark:bg-yellow-950/20',
+              IMPORTANT: 'border-purple-400 bg-purple-50 dark:bg-purple-950/20',
+            };
+            const icons: Record<string, string> = {
+              NOTE: 'ℹ️', TIP: '💡', WARNING: '⚠️', IMPORTANT: '📌',
+            };
+            if (type && styles[type]) {
+              return (
+                <div className={cn('not-prose border-l-4 px-4 py-3 rounded-r-lg my-4 text-sm', styles[type])}>
+                  <p className="font-semibold mb-1">{icons[type]} {type}</p>
+                  <div>{children}</div>
+                </div>
+              );
+            }
+            return <blockquote {...props}>{children}</blockquote>;
+          },
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </article>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function EditorialsPage() {
   const qc = useQueryClient();
@@ -61,8 +122,6 @@ export default function EditorialsPage() {
     staleTime: 30_000,
   });
 
-  // Topics list for the create form — fetch all without pagination
-  // (topic count stays manageable; no need to paginate a dropdown)
   const { data: topicsData } = useQuery({
     queryKey: ['admin-topics-all'],
     queryFn: () =>
@@ -141,7 +200,6 @@ export default function EditorialsPage() {
       estimatedMinutes: ed.estimatedMinutes?.toString() ?? '',
       published: ed.published,
     });
-    // Fetch full markdownContent separately (not included in list response)
     api.get(`/admin/editorials/${ed.id}`).then(r => {
       setForm(p => ({ ...p, markdownContent: r.data.markdownContent }));
     });
@@ -157,13 +215,11 @@ export default function EditorialsPage() {
     editing ? updateMutation.mutate() : createMutation.mutate();
   };
 
-  // Filter tab changes: reset to page 1
   const handleFilterChange = (f: string) => {
     setFilterPublished(f);
     setPage(1);
   };
 
-  // Client-side search filters the current page only
   const displayed = (data?.data ?? []).filter(ed =>
     !search ||
     ed.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -213,16 +269,17 @@ export default function EditorialsPage() {
         ))}
       </div>
 
-      {/* Full-screen form modal */}
+      {/* Full-screen editor modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
-          {/* Form header */}
-          <div className="flex items-center justify-between px-6 py-3 border-b border-border">
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-border flex-shrink-0">
             <h2 className="font-semibold">{editing ? 'Edit Editorial' : 'New Editorial'}</h2>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setPreviewMode(p => !p)}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs hover:bg-accent"
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs hover:bg-accent transition-colors"
               >
                 {previewMode
                   ? <><EyeOff className="w-3.5 h-3.5" /> Editor</>
@@ -242,7 +299,9 @@ export default function EditorialsPage() {
             </div>
           </div>
 
+          {/* Body */}
           <div className="flex flex-1 overflow-hidden">
+
             {/* Left: metadata panel */}
             <div className="w-72 flex-shrink-0 border-r border-border overflow-y-auto p-4 space-y-4">
               {[
@@ -300,13 +359,34 @@ export default function EditorialsPage() {
               </div>
             </div>
 
-            {/* Right: editor / preview */}
-            <div className="flex-1 overflow-hidden flex flex-col">
-              {previewMode ? (
-                <div className="flex-1 overflow-y-auto p-8 prose prose-slate dark:prose-invert max-w-none">
-                  <pre className="whitespace-pre-wrap text-sm">{form.markdownContent}</pre>
+            {/* Right: editor / preview — split or full depending on mode */}
+            {previewMode ? (
+              // Split view: editor on left, rendered preview on right
+              <div className="flex flex-1 overflow-hidden">
+                <div className="flex-1 flex flex-col border-r border-border overflow-hidden">
+                  <div className="px-4 py-2 border-b border-border bg-muted/30 flex-shrink-0">
+                    <span className="text-xs font-medium text-muted-foreground">Markdown</span>
+                  </div>
+                  <textarea
+                    value={form.markdownContent}
+                    onChange={e => setForm(p => ({ ...p, markdownContent: e.target.value }))}
+                    className="flex-1 w-full p-6 font-mono text-sm bg-background resize-none focus:outline-none"
+                    placeholder="Write your markdown content here..."
+                    spellCheck={false}
+                  />
                 </div>
-              ) : (
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="px-4 py-2 border-b border-border bg-muted/30 flex-shrink-0">
+                    <span className="text-xs font-medium text-muted-foreground">Preview</span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-8">
+                    <MarkdownPreview content={form.markdownContent} />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Editor only
+              <div className="flex-1 flex flex-col overflow-hidden">
                 <textarea
                   value={form.markdownContent}
                   onChange={e => setForm(p => ({ ...p, markdownContent: e.target.value }))}
@@ -314,8 +394,8 @@ export default function EditorialsPage() {
                   placeholder="Write your markdown content here..."
                   spellCheck={false}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -400,7 +480,6 @@ export default function EditorialsPage() {
             </tbody>
           </table>
 
-          {/* Pagination sits inside the border, below the table */}
           <div className="px-4">
             <Pagination
               page={page}
