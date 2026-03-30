@@ -61,17 +61,30 @@ export class AdminService {
   }
 
   // ── Topics ────────────────────────────────────────────────────────────────
-  async getTopics(subjectId?: string) {
-    const topics = await this.prisma.topic.findMany({
-      where: subjectId ? { subjectId } : undefined,
-      orderBy: [{ subjectId: 'asc' }, { orderIndex: 'asc' }],
-      include: {
-        subject: { select: { name: true, categoryType: true } },
-        _count: { select: { bookmarks: true } },
-      },
-    });
+  async getTopics(subjectId?: string, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const where = subjectId ? { subjectId } : {};
 
-    return { data: topics, total: topics.length };
+    const [topics, total] = await Promise.all([
+      this.prisma.topic.findMany({
+        where,
+        orderBy: [{ subjectId: 'asc' }, { orderIndex: 'asc' }],
+        include: {
+          subject: { select: { name: true, categoryType: true } },
+          _count: { select: { bookmarks: true } },
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.topic.count({ where }),
+    ]);
+
+    return {
+      data: topics,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async createTopic(dto: CreateTopicDto) {
@@ -103,16 +116,29 @@ export class AdminService {
   }
 
   // ── Editorials ────────────────────────────────────────────────────────────
-  async getEditorials(published?: boolean) {
-    const editorials = await this.prisma.editorial.findMany({
-      where: published !== undefined ? { published } : undefined,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        topic: { select: { title: true, slug: true } },
-      },
-    });
+  async getEditorials(published?: boolean, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const where = published !== undefined ? { published } : {};
 
-    return { data: editorials, total: editorials.length };
+    const [editorials, total] = await Promise.all([
+      this.prisma.editorial.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          topic: { select: { title: true, slug: true } },
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.editorial.count({ where }),
+    ]);
+
+    return {
+      data: editorials,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async getEditorial(id: string) {
@@ -162,25 +188,38 @@ export class AdminService {
   }
 
   // ── Users ─────────────────────────────────────────────────────────────────
-  async getUsers(search?: string) {
-    const users = await this.prisma.user.findMany({
-      where: search
-        ? {
-            OR: [
-              { name: { contains: search, mode: 'insensitive' } },
-              { email: { contains: search, mode: 'insensitive' } },
-            ],
-          }
-        : undefined,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true, name: true, email: true, phone: true,
-        emailVerified: true, phoneVerified: true,
-        role: true, createdAt: true,
-      },
-    });
+  async getUsers(search?: string, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const where = search
+      ? {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' as const } },
+            { email: { contains: search, mode: 'insensitive' as const } },
+          ],
+        }
+      : {};
 
-    return { data: users, total: users.length };
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, name: true, email: true, phone: true,
+          emailVerified: true, phoneVerified: true,
+          role: true, createdAt: true,
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      data: users,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async updateUserRole(id: string, role: 'USER' | 'ADMIN') {
