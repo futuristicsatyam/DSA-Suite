@@ -7,13 +7,11 @@ import { AuthModule } from './auth/auth.module';
 import { ContentModule } from './content/content.module';
 import { UserModule } from './user/user.module';
 import { AdminModule } from './admin/admin.module';
+import { ProblemsModule } from './problems/problems.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '.env',
-    }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     ThrottlerModule.forRoot([
       { name: 'short', ttl: 1000, limit: 10 },
       { name: 'long', ttl: 60000, limit: 100 },
@@ -24,6 +22,7 @@ import { AdminModule } from './admin/admin.module';
     ContentModule,
     UserModule,
     AdminModule,
+    ProblemsModule,
   ],
 })
 export class AppModule {}
