@@ -11,8 +11,8 @@ const LANGUAGES = [
   {
     id: 'cpp',
     label: 'C++',
-    wandboxCompiler: 'gcc-head',
-
+    judge0Id: 54,
+    color: 'bg-blue-400',
     template: `#include <bits/stdc++.h>
 using namespace std;
 
@@ -26,8 +26,8 @@ int main() {
   {
     id: 'c',
     label: 'C',
-    wandboxCompiler: 'gcc-head-c',
-
+    judge0Id: 50,
+    color: 'bg-cyan-400',
     template: `#include <stdio.h>
 #include <stdlib.h>
 
@@ -38,78 +38,85 @@ int main() {
     return 0;
 }`,
   },
-
   {
-    id: 'Java',
-    label: 'java',
-    wandboxCompiler: 'java',
+    id: 'java',
+    label: 'Java',
+    judge0Id: 62,
+    color: 'bg-orange-400',
+    template: `import java.util.*;
 
-    template: `
-    
-    
-    
-              Comming Soon
-              
-              
-              
-              `,
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        // Write your Java code here
+
+        System.out.println("Hello, World!");
+    }
+}`,
   },
   {
-    id: 'Python',
-    label: 'python',
-    wandboxCompiler: 'python',
+    id: 'python',
+    label: 'Python',
+    judge0Id: 71,
+    color: 'bg-green-400',
+    template: `# Write your Python code here
 
-    template: `
-    
-    
-    
-              Comming Soon
-              
-              
-              
-              `,    
+def main():
+    print("Hello, World!")
+
+if __name__ == "__main__":
+    main()`,
   },
 ];
 
-async function runWithWandbox(
-  compiler: string,
+async function runWithJudge0(
+  languageId: number,
   code: string,
   stdin: string
-): Promise<{ output: string; error: string; compileError: string }> {
-  const body: Record<string, string> = {
-    compiler,
-    code,
-    options: 'warning',
-  };
-  if (stdin.trim()) body.stdin = stdin;
-
-  const res = await fetch('https://wandbox.org/api/compile.json', {
+): Promise<{ output: string; error: string; compileError: string; time: string | null; memory: number | null }> {
+  const res = await fetch('https://ce.judge0.com/submissions?base64_encoded=false&wait=true', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      language_id: languageId,
+      source_code: code,
+      stdin: stdin || '',
+    }),
   });
 
   if (!res.ok) {
-    throw new Error(`Wandbox responded with HTTP ${res.status}`);
+    throw new Error(`Judge0 responded with HTTP ${res.status}`);
   }
 
   const data = await res.json();
 
-  // Wandbox returns: status (exit code), program_output, program_error, compiler_error, compiler_message
-  const compileError = (data.compiler_error || '').trim();
-  const programOutput = (data.program_output || '').trim();
-  const programError = (data.program_error || '').trim();
+  const statusId: number = data.status?.id ?? 0;
+  let statusError = '';
+  if (statusId === 5) {
+    statusError = 'Time Limit Exceeded';
+  } else if (statusId === 6) {
+    statusError = 'Compilation Error';
+  } else if (statusId >= 7 && statusId <= 12) {
+    statusError = `Runtime Error (${data.status?.description ?? statusId})`;
+  } else if (statusId !== 3 && statusId !== 0) {
+    statusError = `Execution failed: ${data.status?.description ?? `status ${statusId}`}`;
+  }
+
+  const stderr = (data.stderr || '').trim();
 
   return {
-    output: programOutput,
-    error: programError,
-    compileError,
+    output: (data.stdout || '').trim(),
+    error: statusError && stderr ? `${statusError}\n\n${stderr}` : statusError || stderr,
+    compileError: (data.compile_output || '').trim(),
+    time: data.time || null,
+    memory: data.memory || null,
   };
 }
 
 interface CodeRunnerProps {
   defaultCode?: string;
-  defaultLang?: 'c' | 'cpp';
+  defaultLang?: 'c' | 'cpp' | 'java' | 'python';
 }
 
 export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps) {
@@ -125,6 +132,8 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
   const [compileError, setCompileError] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [runtime, setRuntime] = useState<number | null>(null);
+  const [serverTime, setServerTime] = useState<string | null>(null);
+  const [serverMemory, setServerMemory] = useState<number | null>(null);
   const [showInput, setShowInput] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -145,19 +154,19 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
   const handleLangChange = (lang: typeof LANGUAGES[0]) => {
     setSelectedLang(lang);
     setCode(defaultCode || lang.template);
-    setOutput(''); setError(''); setCompileError(''); setRuntime(null);
+    setOutput(''); setError(''); setCompileError(''); setRuntime(null); setServerTime(null); setServerMemory(null);
     setShowLangMenu(false);
   };
 
   const handleRun = async () => {
     if (isRunning) return;
     setIsRunning(true);
-    setOutput(''); setError(''); setCompileError(''); setRuntime(null);
+    setOutput(''); setError(''); setCompileError(''); setRuntime(null); setServerTime(null); setServerMemory(null);
     const startTime = Date.now();
 
     try {
-      const result = await runWithWandbox(
-        selectedLang.wandboxCompiler,
+      const result = await runWithJudge0(
+        selectedLang.judge0Id,
         code,
         input,
       );
@@ -165,10 +174,12 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
       setOutput(result.output);
       setError(result.error);
       setCompileError(result.compileError);
+      setServerTime(result.time);
+      setServerMemory(result.memory);
     } catch (err: any) {
       setRuntime(Date.now() - startTime);
       setError(
-        `Could not reach the compiler (Wandbox).\n\nThis may be a temporary outage. Please try again in a moment.\n\nDetails: ${err?.message || String(err)}`
+        `Could not reach the compiler (Judge0).\n\nThis may be a temporary outage. Please try again in a moment.\n\nDetails: ${err?.message || String(err)}`
       );
     } finally {
       setIsRunning(false);
@@ -204,7 +215,7 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
 
   const handleReset = () => {
     setCode(defaultCode || selectedLang.template);
-    setOutput(''); setError(''); setCompileError(''); setRuntime(null);
+    setOutput(''); setError(''); setCompileError(''); setRuntime(null); setServerTime(null); setServerMemory(null);
   };
 
   const hasResult = output || error || compileError || isRunning;
@@ -225,9 +236,7 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
               onClick={() => setShowLangMenu(o => !o)}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 transition-colors"
             >
-              <span className={cn('w-2 h-2 rounded-full flex-shrink-0',
-                selectedLang.id === 'cpp' ? 'bg-blue-400' : 'bg-yellow-400'
-              )} />
+              <span className={cn('w-2 h-2 rounded-full flex-shrink-0', selectedLang.color)} />
               {selectedLang.label}
               <ChevronDown className="w-3 h-3 text-zinc-500" />
             </button>
@@ -241,8 +250,7 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
                         selectedLang.id === lang.id
                           ? 'bg-indigo-600 text-white'
                           : 'text-zinc-300 hover:bg-zinc-700')}>
-                      <span className={cn('w-2 h-2 rounded-full',
-                        lang.id === 'cpp' ? 'bg-blue-400' : 'bg-yellow-400')} />
+                      <span className={cn('w-2 h-2 rounded-full', lang.color)} />
                       {lang.label}
                     </button>
                   ))}
@@ -336,6 +344,12 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
               {runtime !== null && !isRunning && (
                 <span className="text-xs text-zinc-600">{runtime}ms</span>
               )}
+              {serverTime !== null && !isRunning && (
+                <span className="text-xs text-zinc-600">· {serverTime}s CPU</span>
+              )}
+              {serverMemory !== null && !isRunning && (
+                <span className="text-xs text-zinc-600">· {serverMemory} KB</span>
+              )}
             </div>
           </div>
 
@@ -372,11 +386,10 @@ export function CodeRunner({ defaultCode, defaultLang = 'cpp' }: CodeRunnerProps
       <div className="px-4 py-2 bg-zinc-900 border-t border-white/10 flex items-center justify-between">
         <span className="text-xs text-zinc-600">
           Powered by{' '}
-          <a href="https://wandbox.org" target="_blank" rel="noopener noreferrer"
+          <a href="https://judge0.com" target="_blank" rel="noopener noreferrer"
             className="text-zinc-500 hover:text-zinc-300 transition-colors">
-            Wandbox
+            Judge0 CE
           </a>
-          {' '}· GCC (latest)
         </span>
         <span className="text-xs text-zinc-600">
           {lineCount} lines · {code.length} chars
