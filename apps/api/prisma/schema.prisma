@@ -32,6 +32,15 @@ enum OtpType {
   RESET_PASSWORD
 }
 
+enum Verdict {
+  ACCEPTED
+  WRONG_ANSWER
+  TIME_LIMIT_EXCEEDED
+  RUNTIME_ERROR
+  COMPILATION_ERROR
+  PENDING
+}
+
 // ── User ──────────────────────────────────────────────────────────────────────
 
 model User {
@@ -50,6 +59,7 @@ model User {
   bookmarks      Bookmark[]
   progress       UserProgress[]
   recentlyViewed RecentlyViewed[]
+  submissions    Submission[]
 
   @@map("users")
 }
@@ -106,6 +116,7 @@ model Topic {
   bookmarks      Bookmark[]
   progress       UserProgress[]
   recentlyViewed RecentlyViewed[]
+  problems       Problem[]
 
   @@map("topics")
 }
@@ -180,4 +191,64 @@ model RecentlyViewed {
 
   @@unique([userId, topicId])
   @@map("recently_viewed")
+}
+
+// ── Problem ──────────────────────────────────────────────────────────────
+model Problem {
+  id           String     @id @default(cuid())
+  topicId      String
+  title        String
+  slug         String     @unique
+  description  String
+  difficulty   Difficulty
+  constraints  String?
+  hints        String[]
+  tags         String[]
+  timeLimit    Int        @default(2)
+  memoryLimit  Int        @default(256)
+  orderIndex   Int?
+  published    Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  topic       Topic        @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  testCases   TestCase[]
+  submissions Submission[]
+
+  @@map("problems")
+}
+
+// ── TestCase ─────────────────────────────────────────────────────────────
+model TestCase {
+  id         String  @id @default(cuid())
+  problemId  String
+  input      String
+  expected   String
+  isHidden   Boolean @default(false)
+  orderIndex Int?
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@map("test_cases")
+}
+
+// ── Submission ───────────────────────────────────────────────────────────
+model Submission {
+  id              String   @id @default(cuid())
+  userId          String
+  problemId       String
+  language        String
+  code            String
+  verdict         Verdict  @default(PENDING)
+  runtime         String?
+  memory          Int?
+  testCasesPassed Int      @default(0)
+  testCasesTotal  Int      @default(0)
+  errorOutput     String?
+  createdAt       DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@map("submissions")
 }
