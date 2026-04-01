@@ -522,6 +522,66 @@ for (int i = 0; i < n; i++)       // O(n)
   }
 
   console.log('✅ Sample editorials seeded');
+
+    // ── Sample Problems ──────────────────────────────────────────────────────
+  const arraysIntro = await prisma.topic.findUnique({ where: { slug: 'arrays-intro' } });
+  const kadanes = await prisma.topic.findUnique({ where: { slug: 'kadanes-algorithm' } });
+
+  if (arraysIntro) {
+    const p1 = await prisma.problem.upsert({
+      where: { slug: 'two-sum' },
+      update: {},
+      create: {
+        topicId: arraysIntro.id, title: 'Two Sum', slug: 'two-sum',
+        description: '# Two Sum\n\nGiven an array of `n` integers and a `target`, print the indices of two numbers that add up to target.\n\n## Input\n- First line: `n` (size of array)\n- Second line: `n` space-separated integers\n- Third line: `target`\n\n## Output\n- Two space-separated indices (0-based)\n\n## Example\n```\nInput:\n4\n2 7 11 15\n9\n\nOutput:\n0 1\n```',
+        difficulty: 'BEGINNER', constraints: '2 <= n <= 10^4', hints: ['Try a hash map'],
+        tags: ['array', 'hash-map'], timeLimit: 2, memoryLimit: 256, orderIndex: 1, published: true,
+      },
+    });
+    await prisma.testCase.deleteMany({ where: { problemId: p1.id } });
+    await prisma.testCase.createMany({ data: [
+      { problemId: p1.id, input: '4\n2 7 11 15\n9', expected: '0 1', isHidden: false, orderIndex: 1 },
+      { problemId: p1.id, input: '3\n3 2 4\n6', expected: '1 2', isHidden: false, orderIndex: 2 },
+      { problemId: p1.id, input: '2\n3 3\n6', expected: '0 1', isHidden: true, orderIndex: 3 },
+    ]});
+
+    const p2 = await prisma.problem.upsert({
+      where: { slug: 'reverse-array' },
+      update: {},
+      create: {
+        topicId: arraysIntro.id, title: 'Reverse Array', slug: 'reverse-array',
+        description: '# Reverse Array\n\nGiven an array, print it in reverse order.\n\n## Input\n- First line: `n`\n- Second line: `n` space-separated integers\n\n## Output\n- Reversed array, space-separated',
+        difficulty: 'BEGINNER', constraints: '1 <= n <= 10^5',
+        tags: ['array'], timeLimit: 2, memoryLimit: 256, orderIndex: 2, published: true,
+      },
+    });
+    await prisma.testCase.deleteMany({ where: { problemId: p2.id } });
+    await prisma.testCase.createMany({ data: [
+      { problemId: p2.id, input: '5\n1 2 3 4 5', expected: '5 4 3 2 1', isHidden: false, orderIndex: 1 },
+      { problemId: p2.id, input: '3\n10 20 30', expected: '30 20 10', isHidden: true, orderIndex: 2 },
+    ]});
+  }
+
+  if (kadanes) {
+    const p3 = await prisma.problem.upsert({
+      where: { slug: 'max-subarray-sum' },
+      update: {},
+      create: {
+        topicId: kadanes.id, title: 'Maximum Subarray Sum', slug: 'max-subarray-sum',
+        description: '# Maximum Subarray Sum\n\nFind the contiguous subarray with the largest sum.\n\n## Input\n- First line: `n`\n- Second line: `n` space-separated integers\n\n## Output\n- Maximum subarray sum',
+        difficulty: 'INTERMEDIATE', constraints: '1 <= n <= 10^5',
+        tags: ['array', 'dp', 'kadane'], timeLimit: 2, memoryLimit: 256, orderIndex: 1, published: true,
+      },
+    });
+    await prisma.testCase.deleteMany({ where: { problemId: p3.id } });
+    await prisma.testCase.createMany({ data: [
+      { problemId: p3.id, input: '8\n-2 1 -3 4 -1 2 1 -5', expected: '6', isHidden: false, orderIndex: 1 },
+      { problemId: p3.id, input: '5\n1 2 3 4 5', expected: '15', isHidden: false, orderIndex: 2 },
+      { problemId: p3.id, input: '3\n-1 -2 -3', expected: '-1', isHidden: true, orderIndex: 3 },
+    ]});
+  }
+
+  console.log('✅ Sample problems seeded');
   console.log('\n🎉 Seeding complete!');
   console.log('   Admin: admin@dsasuite.com / Admin@1234');
   console.log('   Demo:  demo@dsasuite.com  / User@1234');
