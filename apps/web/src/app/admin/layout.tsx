@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, BookOpen, FileText, Users, Tag, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, BookOpen, FileText, Users, Tag, Code2, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +13,7 @@ const NAV = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/admin/subjects', label: 'Subjects', icon: BookOpen, exact: false },
   { href: '/admin/topics', label: 'Topics', icon: Tag, exact: false },
+  { href: '/admin/problems', label: 'Problems', icon: Code2, exact: false },
   { href: '/admin/editorials', label: 'Editorials', icon: FileText, exact: false },
   { href: '/admin/users', label: 'Users', icon: Users, exact: false },
 ];
@@ -72,9 +73,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 min-w-0 overflow-auto">
-        {children}
-      </main>
+      <main className="flex-1 min-w-0 overflow-auto">{children}</main>
     </div>
   );
 }
