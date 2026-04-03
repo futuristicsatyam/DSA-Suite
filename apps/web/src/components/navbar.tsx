@@ -20,6 +20,7 @@ const NAV_LINKS = [
   { href: '/dsa', label: 'DSA' },
   { href: '/cp', label: 'CP' },
   { href: '/gate', label: 'GATE CSE' },
+  { href: '/problems', label: 'Problems' },
   { href: '/contact', label: 'Contact' },
 ];
 

@@ -6,7 +6,9 @@ import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, cn } from '@/lib/utils';
-import { ChevronDown, ChevronRight, BookOpen, Circle, CheckCircle2, ArrowRight, Clock, Bookmark, BookmarkCheck, Check, Menu, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, BookOpen, Circle, CheckCircle2, ArrowRight, Clock, Bookmark, BookmarkCheck, Check, Menu, X, Code2 } from 'lucide-react';
+import Link from 'next/link';
+import { getProblemsForTopic } from '@/lib/problems';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth-context';
 import ReactMarkdown from 'react-markdown';
@@ -77,6 +79,7 @@ function CpContent() {
   const { data: topicData, isLoading: topicLoading } = useQuery({ queryKey: ['cp-topic', selectedSlug], queryFn: () => api.get(`/content/cp/topics/${selectedSlug}`).then(r => r.data as { topic: Topic; editorial: Editorial | null }), enabled: !!selectedSlug, staleTime: 5 * 60_000 });
   const { data: bookmarks = [] } = useQuery({ queryKey: ['bookmarks'], queryFn: () => api.get('/user/bookmarks').then(r => r.data as any[]), enabled: isAuthenticated });
   const { data: progress = [] } = useQuery({ queryKey: ['progress'], queryFn: () => api.get('/user/progress').then(r => r.data as Progress[]), enabled: isAuthenticated });
+  const { data: practiceProblems = [] } = useQuery({ queryKey: ['cp-problems', topicData?.topic?.id], queryFn: () => getProblemsForTopic(topicData!.topic.id), enabled: !!topicData?.topic?.id, staleTime: 5 * 60_000 });
 
   const isBookmarked = bookmarks.some((b: any) => b.topic?.slug === selectedSlug);
   const bookmarkId = bookmarks.find((b: any) => b.topic?.slug === selectedSlug)?.id;
@@ -147,6 +150,35 @@ function CpContent() {
 
               {/* Code Playground */}
               <CodeRunner defaultLang="cpp" />
+
+              {/* Practice Problems */}
+              {practiceProblems.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Code2 className="w-4 h-4 text-blue-600" />
+                    <h2 className="font-semibold text-base">Practice Problems</h2>
+                    <span className="text-xs text-muted-foreground ml-1">({practiceProblems.length})</span>
+                  </div>
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    {practiceProblems
+                      .slice()
+                      .sort((a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999))
+                      .map((p, idx) => (
+                        <div key={p.id} className={cn('flex items-center justify-between px-4 py-3 hover:bg-accent/40 transition-colors', idx > 0 && 'border-t border-border')}>
+                          <Link href={`/problems/${p.slug}`} className="font-medium text-sm hover:text-blue-600 transition-colors flex-1 min-w-0 truncate">
+                            {p.title}
+                          </Link>
+                          <div className="flex items-center gap-3 shrink-0 ml-3">
+                            <span className={cn('px-2 py-0.5 rounded-full text-xs font-semibold', DIFF_STYLES[p.difficulty as keyof typeof DIFF_STYLES] ?? 'text-muted-foreground bg-muted')}>
+                              {p.difficulty[0] + p.difficulty.slice(1).toLowerCase()}
+                            </span>
+                            <span className="text-xs text-muted-foreground hidden sm:inline">{p._count.submissions} subs</span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : null}
         </main>
