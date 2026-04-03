@@ -253,13 +253,19 @@ export default function ProblemPage() {
     setSelectedLang(lang);
     setCode(lang.template);
     setShowLangMenu(false);
-    setRunOutput(''); setRunError(''); setRunCompileError(''); setRunTime(null);
+    setRunOutput('');
+    setRunError('');
+    setRunCompileError('');
+    setRunTime(null);
   };
 
   const handleRun = async () => {
     if (isRunning) return;
     setIsRunning(true);
-    setRunOutput(''); setRunError(''); setRunCompileError(''); setRunTime(null);
+    setRunOutput('');
+    setRunError('');
+    setRunCompileError('');
+    setRunTime(null);
     try {
       const result = await runWithJudge0(selectedLang.judge0Id, code, stdin);
       setRunOutput(result.output);
