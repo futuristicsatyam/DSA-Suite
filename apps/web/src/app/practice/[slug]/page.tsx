@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Circle, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Circle } from 'lucide-react';
 import { api, cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
 import { getSolvedProblemIds } from '@/lib/problems';
@@ -164,8 +164,6 @@ export default function PracticeCategoryPage() {
                       <td className="px-4 py-3">
                         {status === 'solved' ? (
                           <CheckCircle2 className="w-5 h-5 text-green-600" />
-                        ) : status === 'attempted' ? (
-                          <Clock className="w-5 h-5 text-yellow-600" />
                         ) : (
                           <Circle className="w-5 h-5 text-muted-foreground/40" />
                         )}
