@@ -85,4 +85,30 @@ export class UserController {
   addRecentlyViewed(@Req() req: any, @Body() body: { topicId: string }) {
     return this.userService.addRecentlyViewed(req.user.id, body.topicId);
   }
+
+  // ── Enrollments ───────────────────────────────────────────────────────────
+  @Get('enrollments')
+  @ApiOperation({ summary: 'Get enrolled courses with progress' })
+  getEnrollments(@Req() req: any) {
+    return this.userService.getEnrollments(req.user.id);
+  }
+
+  @Post('enrollments')
+  @ApiOperation({ summary: 'Enroll in a course' })
+  enrollInCourse(@Req() req: any, @Body() body: { courseId: string }) {
+    return this.userService.enrollInCourse(req.user.id, body.courseId);
+  }
+
+  @Delete('enrollments/:courseId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Unenroll from a course' })
+  unenrollFromCourse(@Req() req: any, @Param('courseId') courseId: string) {
+    return this.userService.unenrollFromCourse(req.user.id, courseId);
+  }
+
+  @Get('enrollments/:courseId/status')
+  @ApiOperation({ summary: 'Check enrollment status' })
+  isEnrolled(@Req() req: any, @Param('courseId') courseId: string) {
+    return this.userService.isEnrolled(req.user.id, courseId);
+  }
 }

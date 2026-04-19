@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, cn } from '@/lib/utils';
 import { ChevronDown, ChevronRight, BookOpen, Circle, CheckCircle2, ArrowRight, Clock, Bookmark, BookmarkCheck, Check, Menu, X, Code2 } from 'lucide-react';
 import Link from 'next/link';
-import { getProblemsForTopic } from '@/lib/problems';
+import { getProblemsForTopic, getSolvedProblemIds } from '@/lib/problems';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth-context';
 import ReactMarkdown from 'react-markdown';
@@ -21,7 +21,7 @@ import { CodeRunner } from '@/components/code-runner';
 
 interface Topic { id: string; slug: string; title: string; shortDescription: string | null; difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | null; orderIndex: number | null; }
 interface Subject { id: string; name: string; slug: string; topics: Topic[]; }
-interface Editorial { title: string; markdownContent: string; tags: string[]; estimatedMinutes: number | null; }
+interface Editorial { title: string; markdownContent: string; tags: string[]; estimatedMinutes: number | null; includeCodeEditor?: boolean; }
 interface Progress { topicId: string; completed: boolean; progressPercent: number; }
 
 const DIFF_STYLES = { BEGINNER: 'text-green-600 bg-green-50 dark:bg-green-900/20', INTERMEDIATE: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20', ADVANCED: 'text-red-500 bg-red-50 dark:bg-red-900/20' };
@@ -77,6 +77,9 @@ function CpContent() {
 
   const { data: subjects = [], isLoading } = useQuery({ queryKey: ['cp-subjects'], queryFn: () => api.get('/content/cp/subjects').then(r => r.data as Subject[]), staleTime: 5 * 60_000 });
   const { data: topicData, isLoading: topicLoading } = useQuery({ queryKey: ['cp-topic', selectedSlug], queryFn: () => api.get(`/content/cp/topics/${selectedSlug}`).then(r => r.data as { topic: Topic; editorial: Editorial | null }), enabled: !!selectedSlug, staleTime: 5 * 60_000 });
+  const { data: solvedIds = [] } = useQuery({ queryKey: ['solved-problem-ids'], queryFn: getSolvedProblemIds, enabled: isAuthenticated, staleTime: 30_000 });
+  const solvedSet = new Set(solvedIds);
+
   const { data: bookmarks = [] } = useQuery({ queryKey: ['bookmarks'], queryFn: () => api.get('/user/bookmarks').then(r => r.data as any[]), enabled: isAuthenticated });
   const { data: progress = [] } = useQuery({ queryKey: ['progress'], queryFn: () => api.get('/user/progress').then(r => r.data as Progress[]), enabled: isAuthenticated });
   const { data: practiceProblems = [] } = useQuery({ queryKey: ['cp-problems', topicData?.topic?.id], queryFn: () => getProblemsForTopic(topicData!.topic.id), enabled: !!topicData?.topic?.id, staleTime: 5 * 60_000 });
@@ -112,8 +115,8 @@ function CpContent() {
         </div>
       )}
       <div className="flex gap-6 items-start">
-        <aside className="w-64 flex-shrink-0 hidden md:block sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto"><SidebarContent {...sidebarProps} /></aside>
-        <main className="flex-1 min-w-0">
+        <aside className="w-64 flex-shrink-0 hidden md:block sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto pr-4 border-r border-border"><SidebarContent {...sidebarProps} /></aside>
+        <main className="flex-1 min-w-0 border border-border rounded-xl p-6 bg-card">
           {!selectedSlug ? (
             <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center"><ArrowRight className="w-8 h-8 text-blue-600" /></div>
@@ -149,7 +152,7 @@ function CpContent() {
               </article>
 
               {/* Code Playground */}
-              <CodeRunner defaultLang="cpp" />
+              {topicData.editorial?.includeCodeEditor && <CodeRunner defaultLang="cpp" />}
 
               {/* Practice Problems */}
               {practiceProblems.length > 0 && (
@@ -165,9 +168,16 @@ function CpContent() {
                       .sort((a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999))
                       .map((p, idx) => (
                         <div key={p.id} className={cn('flex items-center justify-between px-4 py-3 hover:bg-accent/40 transition-colors', idx > 0 && 'border-t border-border')}>
-                          <Link href={`/problems/${p.slug}`} className="font-medium text-sm hover:text-blue-600 transition-colors flex-1 min-w-0 truncate">
-                            {p.title}
-                          </Link>
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {isAuthenticated && solvedSet.has(p.id) ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                            ) : isAuthenticated ? (
+                              <Circle className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
+                            ) : null}
+                            <Link href={`/problems/${p.slug}`} className="font-medium text-sm hover:text-blue-600 transition-colors truncate">
+                              {p.title}
+                            </Link>
+                          </div>
                           <div className="flex items-center gap-3 shrink-0 ml-3">
                             <span className={cn('px-2 py-0.5 rounded-full text-xs font-semibold', DIFF_STYLES[p.difficulty as keyof typeof DIFF_STYLES] ?? 'text-muted-foreground bg-muted')}>
                               {p.difficulty[0] + p.difficulty.slice(1).toLowerCase()}

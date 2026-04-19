@@ -147,4 +147,13 @@ export class ProblemsService {
     if (!sub) throw new NotFoundException('Submission not found');
     return sub;
   }
+
+  async getSolvedProblemIds(userId: string) {
+    const solved = await this.prisma.submission.findMany({
+      where: { userId, verdict: 'ACCEPTED' },
+      select: { problemId: true },
+      distinct: ['problemId'],
+    });
+    return solved.map(s => s.problemId);
+  }
 }

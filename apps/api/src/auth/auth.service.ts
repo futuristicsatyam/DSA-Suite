@@ -214,6 +214,11 @@ export class AuthService {
       where: isEmail ? { email: identifier } : { phone: identifier },
     });
     if (!user) throw new NotFoundException('No account found');
+    if (isEmail && !user.emailVerified) {
+      throw new BadRequestException(
+        'Email not verified. Please verify your email first before resetting password.',
+      );
+    }
     const code = this.generateOtp();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     const target = isEmail ? user.email : user.phone;

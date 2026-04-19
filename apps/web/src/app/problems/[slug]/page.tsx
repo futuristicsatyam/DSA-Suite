@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getProblemBySlug,
   submitCode,
@@ -183,6 +183,7 @@ function SubmissionDetail({ id, onClose }: { id: string; onClose: () => void }) 
 export default function ProblemPage() {
   const { slug } = useParams<{ slug: string }>();
   const { isAuthenticated, user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Editor state
   const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
@@ -240,7 +241,9 @@ export default function ProblemPage() {
     onSuccess: (result) => {
       setLastSubmission(result);
       refetchSubmissions();
+      // Refresh solved status on problems list
       if (result.verdict === 'ACCEPTED') {
+        queryClient.invalidateQueries({ queryKey: ['solved-problem-ids'] });
         toast.success('Accepted! All test cases passed 🎉');
       } else {
         toast.error(VERDICT_LABELS[result.verdict]);
@@ -336,9 +339,9 @@ export default function ProblemPage() {
         <span className="text-foreground font-medium truncate">{problem.title}</span>
       </nav>
 
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-0 items-start">
         {/* ── Left Panel: Problem Description ── */}
-        <div className="w-full lg:w-[45%] space-y-5">
+        <div className="w-full lg:w-[45%] space-y-5 lg:pr-6 lg:border-r border-border">
           {/* Title + badges */}
           <div className="space-y-2">
             <div className="flex items-start gap-3 flex-wrap">
@@ -436,7 +439,7 @@ export default function ProblemPage() {
         </div>
 
         {/* ── Right Panel: Editor + Submissions ── */}
-        <div className="w-full lg:flex-1 space-y-5">
+        <div className="w-full lg:flex-1 lg:pl-6 space-y-5">
           {/* Editor card */}
           <div className="rounded-xl border border-border overflow-hidden">
             {/* Toolbar */}

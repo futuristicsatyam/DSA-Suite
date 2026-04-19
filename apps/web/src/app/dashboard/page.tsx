@@ -6,7 +6,7 @@ import { Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { BookOpen, Bookmark, CheckCircle2, TrendingUp, Clock, ArrowRight, BarChart2, Flame, Loader2 } from 'lucide-react';
+import { BookOpen, Bookmark, CheckCircle2, TrendingUp, Clock, ArrowRight, BarChart2, Flame, Loader2, GraduationCap } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { api, cn } from '@/lib/utils';
 
@@ -26,6 +26,15 @@ const DIFF_STYLES: Record<string, string> = {
   ADVANCED: 'text-red-500 bg-red-50 dark:bg-red-900/20',
 };
 
+interface EnrolledCourse {
+  id: string;
+  enrolledAt: string;
+  course: { id: string; name: string; slug: string; description: string | null; icon: string | null; thumbnail: string | null };
+  totalTopics: number;
+  completedTopics: number;
+  percent: number;
+}
+
 function DashboardContent() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -37,6 +46,12 @@ function DashboardContent() {
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => api.get('/user/dashboard').then(r => r.data as DashboardData),
+    enabled: isAuthenticated,
+  });
+
+  const { data: enrolledCourses = [], isLoading: enrollLoading } = useQuery({
+    queryKey: ['enrollments'],
+    queryFn: () => api.get('/user/enrollments').then(r => r.data as EnrolledCourse[]),
     enabled: isAuthenticated,
   });
 
@@ -116,6 +131,51 @@ function DashboardContent() {
           </div>
         </div>
       )}
+
+      {/* Enrolled Courses */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold flex items-center gap-2"><GraduationCap className="w-5 h-5 text-indigo-600" /> My Courses</h2>
+        </div>
+        {enrollLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-48 bg-muted animate-pulse rounded-xl" />)}
+          </div>
+        ) : enrolledCourses.length === 0 ? (
+          <div className="rounded-xl border border-border bg-card p-6 text-center">
+            <GraduationCap className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground mb-2">You haven't enrolled in any courses yet.</p>
+            <Link href="/" className="text-indigo-600 text-sm hover:underline">Browse courses →</Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {enrolledCourses.map((enrollment) => (
+              <Link key={enrollment.id} href={`/courses/${enrollment.course.slug}`}
+                className="rounded-xl border border-border bg-card overflow-hidden hover:shadow-md transition-shadow group">
+                {enrollment.course.thumbnail ? (
+                  <img src={enrollment.course.thumbnail} alt={enrollment.course.name} className="w-full h-32 object-cover" />
+                ) : (
+                  <div className="w-full h-32 bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                    <GraduationCap className="w-10 h-10 text-white/60" />
+                  </div>
+                )}
+                <div className="p-4 space-y-3">
+                  <h3 className="font-semibold text-sm group-hover:text-indigo-600 transition-colors">{enrollment.course.name}</h3>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{enrollment.completedTopics} / {enrollment.totalTopics} topics</span>
+                      <span className="font-medium">{enrollment.percent}%</span>
+                    </div>
+                    <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-600 rounded-full transition-all duration-500" style={{ width: `${enrollment.percent}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="rounded-xl border border-border bg-card p-5 space-y-4">

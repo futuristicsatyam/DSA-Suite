@@ -97,3 +97,8 @@ export async function getSubmissionById(id: string) {
   const res = await api.get(`/problems/submissions/${id}`);
   return res.data as Submission;
 }
+
+export async function getSolvedProblemIds() {
+  const res = await api.get('/problems/solved');
+  return res.data as string[];
+}

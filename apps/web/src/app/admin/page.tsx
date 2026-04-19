@@ -4,15 +4,18 @@ export const dynamic = 'force-dynamic';
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Users, BookOpen, Tag, FileText, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Users, BookOpen, FileText, ArrowRight, GraduationCap, Target, Code2, Languages } from 'lucide-react';
 import { api } from '@/lib/utils';
 
 interface Stats {
   totalUsers: number;
+  totalCourses: number;
   totalSubjects: number;
   totalTopics: number;
   totalEditorials: number;
   publishedEditorials: number;
+  totalProblems: number;
+  publishedProblems: number;
 }
 
 export default function AdminDashboard() {
@@ -22,11 +25,12 @@ export default function AdminDashboard() {
   });
 
   const cards = [
+    { label: 'Courses', value: stats?.totalCourses, icon: GraduationCap, color: 'text-pink-600', bg: 'bg-pink-50 dark:bg-pink-900/20', href: '/admin/courses' },
     { label: 'Total Users', value: stats?.totalUsers, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20', href: '/admin/users' },
-    { label: 'Subjects', value: stats?.totalSubjects, icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-900/20', href: '/admin/subjects' },
-    { label: 'Topics', value: stats?.totalTopics, icon: Tag, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20', href: '/admin/topics' },
-    { label: 'Editorials', value: stats?.totalEditorials, icon: FileText, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-900/20', href: '/admin/editorials' },
-    { label: 'Published', value: stats?.publishedEditorials, icon: CheckCircle2, color: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-900/20', href: '/admin/editorials' },
+    { label: 'Subjects', value: stats?.totalSubjects, icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-900/20', href: '/admin/courses' },
+    { label: 'Topics', value: stats?.totalTopics, icon: FileText, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20', href: '/admin/courses' },
+    { label: 'Problems', value: stats?.totalProblems, icon: Code2, color: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-900/20', href: '/admin/practice' },
+    { label: 'Editorials', value: stats?.totalEditorials, icon: FileText, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-900/20', href: '/admin/courses' },
   ];
 
   return (
@@ -55,11 +59,11 @@ export default function AdminDashboard() {
       {/* Quick actions */}
       <div className="space-y-3">
         <h2 className="font-semibold text-sm">Quick actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[
-            { href: '/admin/subjects', label: 'Manage Subjects', desc: 'Add or edit DSA/CP/GATE subjects', icon: BookOpen, color: 'text-indigo-600' },
-            { href: '/admin/topics', label: 'Manage Topics', desc: 'Add or edit topic entries', icon: Tag, color: 'text-purple-600' },
-            { href: '/admin/editorials', label: 'Write Editorials', desc: 'Create and publish content', icon: FileText, color: 'text-green-600' },
+            { href: '/admin/courses', label: 'Manage Courses', desc: 'Courses, subjects, topics & editorials', icon: GraduationCap, color: 'text-pink-600' },
+            { href: '/admin/practice', label: 'Manage Practice', desc: 'Practice categories & coding problems', icon: Target, color: 'text-orange-600' },
+            { href: '/admin/languages', label: 'Manage Languages', desc: 'Languages, topics & editorials', icon: Languages, color: 'text-purple-600' },
             { href: '/admin/users', label: 'Manage Users', desc: 'View users and update roles', icon: Users, color: 'text-blue-600' },
           ].map(item => (
             <Link key={item.href} href={item.href}

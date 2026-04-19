@@ -207,4 +207,78 @@ export class UserService {
       create: { userId, topicId },
     });
   }
+
+  // ── Enrollments ─────────────────────────────────────────────────────────
+  async getEnrollments(userId: string) {
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { userId },
+      orderBy: { enrolledAt: 'desc' },
+      include: {
+        course: {
+          include: {
+            subjects: {
+              include: {
+                topics: { select: { id: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Get all user progress
+    const allProgress = await this.prisma.userProgress.findMany({
+      where: { userId },
+      select: { topicId: true, completed: true },
+    });
+    const completedSet = new Set(allProgress.filter(p => p.completed).map(p => p.topicId));
+
+    return enrollments.map(e => {
+      const totalTopics = e.course.subjects.reduce((sum, s) => sum + s.topics.length, 0);
+      const completedTopics = e.course.subjects.reduce(
+        (sum, s) => sum + s.topics.filter(t => completedSet.has(t.id)).length, 0
+      );
+      return {
+        id: e.id,
+        enrolledAt: e.enrolledAt,
+        course: {
+          id: e.course.id,
+          name: e.course.name,
+          slug: e.course.slug,
+          description: e.course.description,
+          icon: e.course.icon,
+          thumbnail: e.course.thumbnail,
+        },
+        totalTopics,
+        completedTopics,
+        percent: totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0,
+      };
+    });
+  }
+
+  async enrollInCourse(userId: string, courseId: string) {
+    const course = await this.prisma.course.findUnique({ where: { id: courseId } });
+    if (!course) throw new NotFoundException('Course not found');
+    return this.prisma.enrollment.upsert({
+      where: { userId_courseId: { userId, courseId } },
+      update: {},
+      create: { userId, courseId },
+    });
+  }
+
+  async unenrollFromCourse(userId: string, courseId: string) {
+    const enrollment = await this.prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId, courseId } },
+    });
+    if (!enrollment) throw new NotFoundException('Not enrolled in this course');
+    await this.prisma.enrollment.delete({ where: { id: enrollment.id } });
+    return { message: 'Unenrolled successfully' };
+  }
+
+  async isEnrolled(userId: string, courseId: string) {
+    const enrollment = await this.prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId, courseId } },
+    });
+    return { enrolled: !!enrollment };
+  }
 }

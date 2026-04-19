@@ -8,6 +8,44 @@ import { CategoryType } from '@prisma/client';
 export class ContentController {
   constructor(private readonly contentService: ContentService) {}
 
+  // ── Courses ────────────────────────────────────────────────────────────────
+  @Get('courses')
+  @ApiOperation({ summary: 'Get all published courses' })
+  getCourses() {
+    return this.contentService.getCourses();
+  }
+
+  @Get('languages')
+  @ApiOperation({ summary: 'Get all published languages' })
+  getLanguages() {
+    return this.contentService.getLanguages();
+  }
+
+  @Get('courses/:slug')
+  @ApiOperation({ summary: 'Get course by slug' })
+  getCourseBySlug(@Param('slug') slug: string) {
+    return this.contentService.getCourseBySlug(slug);
+  }
+
+  @Get('courses/:slug/subjects')
+  @ApiOperation({ summary: 'Get subjects for a course by slug' })
+  getSubjectsByCourse(@Param('slug') slug: string) {
+    return this.contentService.getSubjectsByCourse(slug);
+  }
+
+  @Get('courses/:slug/topics/:topicSlug')
+  @ApiOperation({ summary: 'Get topic by slug for a course' })
+  getCourseTopicBySlug(@Param('topicSlug') topicSlug: string) {
+    return this.contentService.getTopic(topicSlug);
+  }
+
+  // ── Practice Categories ────────────────────────────────────────────────────
+  @Get('practice-categories')
+  @ApiOperation({ summary: 'Get all published practice categories' })
+  getPracticeCategories() {
+    return this.contentService.getPracticeCategories();
+  }
+
   // ── DSA ───────────────────────────────────────────────────────────────────
   @Get('dsa/subjects')
   @ApiOperation({ summary: 'Get all DSA subjects with topics' })

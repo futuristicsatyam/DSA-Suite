@@ -33,6 +33,14 @@ export class ProblemsController {
     return this.problemsService.getProblemsByTopic(topicId);
   }
 
+  @Get('solved')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get IDs of problems solved by current user' })
+  getSolvedProblemIds(@Req() req: any) {
+    return this.problemsService.getSolvedProblemIds(req.user.id);
+  }
+
   @Post('submit')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

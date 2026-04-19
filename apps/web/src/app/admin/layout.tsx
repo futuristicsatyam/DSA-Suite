@@ -5,16 +5,15 @@ export const dynamic = 'force-dynamic';
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, BookOpen, FileText, Users, Tag, Code2, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, Code2, ChevronRight, GraduationCap, Target, Languages } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 
 const NAV = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/admin/subjects', label: 'Subjects', icon: BookOpen, exact: false },
-  { href: '/admin/topics', label: 'Topics', icon: Tag, exact: false },
-  { href: '/admin/problems', label: 'Problems', icon: Code2, exact: false },
-  { href: '/admin/editorials', label: 'Editorials', icon: FileText, exact: false },
+  { href: '/admin/courses', label: 'Manage Courses', icon: GraduationCap, exact: false },
+  { href: '/admin/practice', label: 'Manage Practice', icon: Target, exact: false },
+  { href: '/admin/languages', label: 'Manage Languages', icon: Languages, exact: false },
   { href: '/admin/users', label: 'Users', icon: Users, exact: false },
 ];
 

@@ -1,26 +1,40 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   BookOpen, Menu, X, Moon, Sun,
   LayoutDashboard, User, LogOut, ChevronDown,
-  Shield, Bookmark, Search,
+  Shield, Bookmark, Search, GraduationCap, Target, Code2,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 import { SearchModal } from './search-modal';
+import { api } from '@/lib/utils';
+
+interface Course {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+}
+
+interface PracticeCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  categoryType?: string;
+}
 
 const NAV_LINKS = [
   { href: '/', label: 'Home' },
   { href: '/about', label: 'About' },
-  { href: '/dsa', label: 'DSA' },
-  { href: '/cp', label: 'CP' },
-  { href: '/gate', label: 'GATE CSE' },
-  { href: '/problems', label: 'Problems' },
   { href: '/contact', label: 'Contact' },
 ];
 
@@ -32,6 +46,48 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [coursesOpen, setCoursesOpen] = useState(false);
+  const [practiceOpen, setPracticeOpen] = useState(false);
+  const [languagesOpen, setLanguagesOpen] = useState(false);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [practiceCategories, setPracticeCategories] = useState<PracticeCategory[]>([]);
+  const [languages, setLanguages] = useState<Course[]>([]);
+  const [mobileCoursesOpen, setMobileCoursesOpen] = useState(false);
+  const [mobilePracticeOpen, setMobilePracticeOpen] = useState(false);
+  const [mobileLanguagesOpen, setMobileLanguagesOpen] = useState(false);
+  const coursesRef = useRef<HTMLDivElement>(null);
+  const practiceRef = useRef<HTMLDivElement>(null);
+  const languagesRef = useRef<HTMLDivElement>(null);
+
+  // Fetch courses and practice categories
+  useEffect(() => {
+    api.get('/content/courses')
+      .then(res => setCourses(res.data))
+      .catch(() => {});
+    api.get('/content/practice-categories')
+      .then(res => setPracticeCategories(res.data))
+      .catch(() => {});
+    api.get('/content/languages')
+      .then(res => setLanguages(res.data))
+      .catch(() => {});
+  }, []);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (coursesRef.current && !coursesRef.current.contains(e.target as Node)) {
+        setCoursesOpen(false);
+      }
+      if (practiceRef.current && !practiceRef.current.contains(e.target as Node)) {
+        setPracticeOpen(false);
+      }
+      if (languagesRef.current && !languagesRef.current.contains(e.target as Node)) {
+        setLanguagesOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   // Open search with "/" key
   useEffect(() => {
@@ -69,7 +125,157 @@ export function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map((l) => (
+            {NAV_LINKS.slice(0, 2).map((l) => (
+              <Link key={l.href} href={l.href}
+                className={cn(
+                  'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+                  pathname === l.href
+                    ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                )}>
+                {l.label}
+              </Link>
+            ))}
+
+            {/* Courses dropdown */}
+            <div className="relative" ref={coursesRef}>
+              <button
+                onClick={() => setCoursesOpen(o => !o)}
+                className={cn(
+                  'flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+                  coursesOpen
+                    ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                )}
+              >
+                <GraduationCap className="w-4 h-4" />
+                Courses
+                <ChevronDown className={cn('w-3 h-3 transition-transform', coursesOpen && 'rotate-180')} />
+              </button>
+
+              {coursesOpen && (
+                <div className="absolute left-0 mt-1 w-64 rounded-xl border border-border bg-background shadow-lg z-50 py-1">
+                  {courses.length === 0 ? (
+                    <p className="px-4 py-3 text-sm text-muted-foreground">No courses available</p>
+                  ) : (
+                    courses.map((course) => (
+                      <Link
+                        key={course.id}
+                        href={`/courses/${course.slug}`}
+                        onClick={() => setCoursesOpen(false)}
+                        className={cn(
+                          'flex flex-col px-4 py-2.5 hover:bg-accent transition-colors',
+                          pathname === `/courses/${course.slug}` && 'bg-indigo-50 dark:bg-indigo-950/40',
+                        )}
+                      >
+                        <span className="text-sm font-medium">{course.name}</span>
+                        {course.description && (
+                          <span className="text-xs text-muted-foreground line-clamp-1">{course.description}</span>
+                        )}
+                      </Link>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Practice dropdown */}
+            <div className="relative" ref={practiceRef}>
+              <button
+                onClick={() => setPracticeOpen(o => !o)}
+                className={cn(
+                  'flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+                  practiceOpen || pathname.startsWith('/practice')
+                    ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                )}
+              >
+                <Target className="w-4 h-4" />
+                Practice
+                <ChevronDown className={cn('w-3 h-3 transition-transform', practiceOpen && 'rotate-180')} />
+              </button>
+
+              {practiceOpen && (
+                <div className="absolute left-0 mt-1 w-64 rounded-xl border border-border bg-background shadow-lg z-50 py-1">
+                  {/* All Problems link */}
+                  <Link
+                    href="/problems"
+                    onClick={() => setPracticeOpen(false)}
+                    className={cn(
+                      'flex flex-col px-4 py-2.5 hover:bg-accent transition-colors border-b border-border',
+                      pathname === '/problems' && 'bg-indigo-50 dark:bg-indigo-950/40',
+                    )}
+                  >
+                    <span className="text-sm font-medium">All</span>
+                    <span className="text-xs text-muted-foreground">Browse all practice problems</span>
+                  </Link>
+                  {practiceCategories.length === 0 ? (
+                    <p className="px-4 py-3 text-sm text-muted-foreground">No categories available</p>
+                  ) : (
+                    practiceCategories.map((cat) => (
+                      <Link
+                        key={cat.id}
+                        href={`/practice/${cat.slug}`}
+                        onClick={() => setPracticeOpen(false)}
+                        className={cn(
+                          'flex flex-col px-4 py-2.5 hover:bg-accent transition-colors',
+                          pathname === `/practice/${cat.slug}` && 'bg-indigo-50 dark:bg-indigo-950/40',
+                        )}
+                      >
+                        <span className="text-sm font-medium">{cat.name}</span>
+                        {cat.description && (
+                          <span className="text-xs text-muted-foreground line-clamp-1">{cat.description}</span>
+                        )}
+                      </Link>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Languages dropdown */}
+            <div className="relative" ref={languagesRef}>
+              <button
+                onClick={() => setLanguagesOpen(o => !o)}
+                className={cn(
+                  'flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+                  languagesOpen || pathname.startsWith('/languages')
+                    ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                )}
+              >
+                <Code2 className="w-4 h-4" />
+                Languages
+                <ChevronDown className={cn('w-3 h-3 transition-transform', languagesOpen && 'rotate-180')} />
+              </button>
+
+              {languagesOpen && (
+                <div className="absolute left-0 mt-1 w-64 rounded-xl border border-border bg-background shadow-lg z-50 py-1">
+                  {languages.length === 0 ? (
+                    <p className="px-4 py-3 text-sm text-muted-foreground">No languages available</p>
+                  ) : (
+                    languages.map((lang) => (
+                      <Link
+                        key={lang.id}
+                        href={`/languages/${lang.slug}`}
+                        onClick={() => setLanguagesOpen(false)}
+                        className={cn(
+                          'flex flex-col px-4 py-2.5 hover:bg-accent transition-colors',
+                          pathname === `/languages/${lang.slug}` && 'bg-indigo-50 dark:bg-indigo-950/40',
+                        )}
+                      >
+                        <span className="text-sm font-medium">{lang.name}</span>
+                        {lang.description && (
+                          <span className="text-xs text-muted-foreground line-clamp-1">{lang.description}</span>
+                        )}
+                      </Link>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {NAV_LINKS.slice(2).map((l) => (
               <Link key={l.href} href={l.href}
                 className={cn(
                   'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
@@ -181,7 +387,108 @@ export function Navbar() {
         {/* Mobile drawer */}
         {mobileOpen && (
           <div className="md:hidden border-t border-border bg-background px-4 py-4 space-y-1">
-            {NAV_LINKS.map((l) => (
+            {NAV_LINKS.slice(0, 2).map((l) => (
+              <Link key={l.href} href={l.href} onClick={() => setMobileOpen(false)}
+                className={cn(
+                  'block px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                  pathname === l.href
+                    ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                )}>
+                {l.label}
+              </Link>
+            ))}
+
+            {/* Mobile courses accordion */}
+            <button
+              onClick={() => setMobileCoursesOpen(o => !o)}
+              className="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent"
+            >
+              <span className="flex items-center gap-2"><GraduationCap className="w-4 h-4" /> Courses</span>
+              <ChevronDown className={cn('w-3 h-3 transition-transform', mobileCoursesOpen && 'rotate-180')} />
+            </button>
+            {mobileCoursesOpen && (
+              <div className="pl-6 space-y-1">
+                {courses.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-muted-foreground">No courses available</p>
+                ) : (
+                  courses.map((course) => (
+                    <Link key={course.id} href={`/courses/${course.slug}`} onClick={() => setMobileOpen(false)}
+                      className={cn(
+                        'block px-3 py-2 rounded-md text-sm transition-colors',
+                        pathname === `/courses/${course.slug}`
+                          ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                      )}>
+                      {course.name}
+                    </Link>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Mobile practice accordion */}
+            <button
+              onClick={() => setMobilePracticeOpen(o => !o)}
+              className="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent"
+            >
+              <span className="flex items-center gap-2"><Target className="w-4 h-4" /> Practice</span>
+              <ChevronDown className={cn('w-3 h-3 transition-transform', mobilePracticeOpen && 'rotate-180')} />
+            </button>
+            {mobilePracticeOpen && (
+              <div className="pl-6 space-y-1">
+                <Link href="/problems" onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    'block px-3 py-2 rounded-md text-sm transition-colors',
+                    pathname === '/problems'
+                      ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                  )}>
+                  All
+                </Link>
+                {practiceCategories.map((cat) => (
+                  <Link key={cat.id} href={`/practice/${cat.slug}`} onClick={() => setMobileOpen(false)}
+                    className={cn(
+                      'block px-3 py-2 rounded-md text-sm transition-colors',
+                      pathname === `/practice/${cat.slug}`
+                        ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                    )}>
+                    {cat.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {/* Mobile languages accordion */}
+            <button
+              onClick={() => setMobileLanguagesOpen(o => !o)}
+              className="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent"
+            >
+              <span className="flex items-center gap-2"><Code2 className="w-4 h-4" /> Languages</span>
+              <ChevronDown className={cn('w-3 h-3 transition-transform', mobileLanguagesOpen && 'rotate-180')} />
+            </button>
+            {mobileLanguagesOpen && (
+              <div className="pl-6 space-y-1">
+                {languages.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-muted-foreground">No languages available</p>
+                ) : (
+                  languages.map((lang) => (
+                    <Link key={lang.id} href={`/languages/${lang.slug}`} onClick={() => setMobileOpen(false)}
+                      className={cn(
+                        'block px-3 py-2 rounded-md text-sm transition-colors',
+                        pathname === `/languages/${lang.slug}`
+                          ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                      )}>
+                      {lang.name}
+                    </Link>
+                  ))
+                )}
+              </div>
+            )}
+
+            {NAV_LINKS.slice(2).map((l) => (
               <Link key={l.href} href={l.href} onClick={() => setMobileOpen(false)}
                 className={cn(
                   'block px-3 py-2 rounded-md text-sm font-medium transition-colors',

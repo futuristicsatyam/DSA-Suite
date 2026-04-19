@@ -5,9 +5,10 @@ export const dynamic = 'force-dynamic';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { getProblems, type Problem } from '@/lib/problems';
+import { getProblems, getSolvedProblemIds, type Problem } from '@/lib/problems';
+import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, Code2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Code2, CheckCircle2, Circle } from 'lucide-react';
 
 const DIFF_STYLES: Record<string, string> = {
   BEGINNER: 'text-green-600 bg-green-50 dark:bg-green-900/20',
@@ -26,12 +27,22 @@ const PAGE_SIZE = 20;
 export default function ProblemsPage() {
   const [difficulty, setDifficulty] = useState('');
   const [page, setPage] = useState(1);
+  const { isAuthenticated } = useAuth();
 
   const { data, isLoading } = useQuery({
     queryKey: ['problems', difficulty, page],
     queryFn: () => getProblems({ difficulty: difficulty || undefined, page, limit: PAGE_SIZE }),
     staleTime: 60_000,
   });
+
+  const { data: solvedIds = [] } = useQuery({
+    queryKey: ['solved-problem-ids'],
+    queryFn: getSolvedProblemIds,
+    enabled: isAuthenticated,
+    staleTime: 30_000,
+  });
+
+  const solvedSet = new Set(solvedIds);
 
   const problems = data?.data ?? [];
   const totalPages = data?.totalPages ?? 1;
@@ -73,6 +84,7 @@ export default function ProblemsPage() {
           <thead>
             <tr className="bg-muted/50 border-b border-border">
               <th className="text-left px-4 py-3 font-semibold text-muted-foreground">#</th>
+              <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Status</th>
               <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Title</th>
               <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Topic</th>
               <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Difficulty</th>
@@ -84,6 +96,7 @@ export default function ProblemsPage() {
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i} className="border-b border-border last:border-0">
                   <td className="px-4 py-3"><div className="h-4 w-6 bg-muted animate-pulse rounded" /></td>
+                  <td className="px-4 py-3"><div className="h-4 w-6 bg-muted animate-pulse rounded" /></td>
                   <td className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded w-48" /></td>
                   <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 bg-muted animate-pulse rounded w-24" /></td>
                   <td className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded w-20" /></td>
@@ -92,7 +105,7 @@ export default function ProblemsPage() {
               ))
             ) : problems.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
+                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
                   No problems found.
                 </td>
               </tr>
@@ -101,6 +114,13 @@ export default function ProblemsPage() {
                 <tr key={problem.id} className="border-b border-border last:border-0 hover:bg-accent/40 transition-colors">
                   <td className="px-4 py-3 text-muted-foreground">
                     {(page - 1) * PAGE_SIZE + idx + 1}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isAuthenticated && solvedSet.has(problem.id) ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    ) : isAuthenticated ? (
+                      <Circle className="w-4 h-4 text-muted-foreground/40" />
+                    ) : null}
                   </td>
                   <td className="px-4 py-3">
                     <div className="space-y-1">

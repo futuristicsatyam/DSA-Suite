@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, cn } from '@/lib/utils';
 import { ChevronDown, ChevronRight, BookOpen, Circle, CheckCircle2, ArrowRight, Clock, Bookmark, BookmarkCheck, Check, Menu, X, Code2 } from 'lucide-react';
 import Link from 'next/link';
-import { getProblemsForTopic } from '@/lib/problems';
+import { getProblemsForTopic, getSolvedProblemIds } from '@/lib/problems';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth-context';
 import ReactMarkdown from 'react-markdown';
@@ -26,7 +26,7 @@ interface Topic {
   orderIndex: number | null;
 }
 interface Subject { id: string; name: string; slug: string; topics: Topic[]; }
-interface Editorial { title: string; summary: string | null; markdownContent: string; tags: string[]; estimatedMinutes: number | null; }
+interface Editorial { title: string; summary: string | null; markdownContent: string; tags: string[]; estimatedMinutes: number | null; includeCodeEditor?: boolean; }
 interface Progress { topicId: string; completed: boolean; progressPercent: number; }
 
 const DIFF_STYLES = {
@@ -35,27 +35,48 @@ const DIFF_STYLES = {
   ADVANCED: 'text-red-500 bg-red-50 dark:bg-red-900/20',
 };
 
-const DSA_TABS = [
-  { label: 'Data Structures', slugs: ['primitive','non-primitive','arrays','strings','linked-list','stack','queue','tree','graph','dynamic-programming','hashing'] },
-  { label: 'Algorithms', slugs: ['sorting','binary-search','greedy','two-pointers','sliding-window','divide-and-conquer','bit-manipulation','recursion','backtracking'] },
-];
-
 const PLACEHOLDER = `> [!NOTE]\n> This topic does not have a written editorial yet.\n\n## Coming Soon\n\nOur team is working on detailed notes for this topic.`;
 
-function SidebarContent({ subjects, subjectsLoading, activeTab, setActiveTab, selectedSlug, selectTopic, expanded, toggleExpand, completedTopicIds, isAuthenticated }: any) {
+// Define which subjects are Algorithms (rest are Data Structures)
+const ALGORITHM_SLUGS = new Set(['sorting', 'binary-search', 'dynamic-programming', 'greedy', 'two-pointers', 'sliding-window']);
+
+function SidebarContent({ subjects, subjectsLoading, selectedSlug, selectTopic, expanded, toggleExpand, completedTopicIds, isAuthenticated, activeTab, setActiveTab }: any) {
+  // Filter subjects based on active tab
+  const filteredSubjects = subjects.filter((subject: Subject) => {
+    if (activeTab === 'ds') {
+      return !ALGORITHM_SLUGS.has(subject.slug);
+    } else {
+      return ALGORITHM_SLUGS.has(subject.slug);
+    }
+  });
+
   return (
     <>
-      <div className="flex rounded-lg bg-muted p-1 mb-4">
-        {DSA_TABS.map((tab, i) => (
-          <button key={tab.label} onClick={() => setActiveTab(i)}
-            className={cn('flex-1 text-xs font-medium py-1.5 rounded-md transition-colors', activeTab === i ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-            {tab.label}
-          </button>
-        ))}
+      {/* Tabs for DS vs Algorithms */}
+      <div className="flex gap-1 p-1 bg-muted rounded-lg mb-4">
+        <button
+          onClick={() => setActiveTab('ds')}
+          className={cn(
+            'flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+            activeTab === 'ds' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          Data Structures
+        </button>
+        <button
+          onClick={() => setActiveTab('algo')}
+          className={cn(
+            'flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+            activeTab === 'algo' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          Algorithms
+        </button>
       </div>
+
       <div className="space-y-1">
         {subjectsLoading ? Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-8 bg-muted animate-pulse rounded-lg" />) :
-          subjects.filter((s: Subject) => DSA_TABS[activeTab].slugs.includes(s.slug)).map((subject: Subject) => {
+          filteredSubjects.map((subject: Subject) => {
             const isOpen = expanded.has(subject.slug);
             const subjectCompleted = subject.topics.filter((t: Topic) => completedTopicIds.has(t.id)).length;
             return (
@@ -109,9 +130,9 @@ function DsaContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedSlug = searchParams.get('topic');
-  const [activeTab, setActiveTab] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'ds' | 'algo'>('ds');
   const { isAuthenticated } = useAuth();
   const qc = useQueryClient();
 
@@ -134,6 +155,14 @@ function DsaContent() {
     enabled: !!topicData?.topic?.id,
     staleTime: 5 * 60_000,
   });
+
+  const { data: solvedIds = [] } = useQuery({
+    queryKey: ['solved-problem-ids'],
+    queryFn: getSolvedProblemIds,
+    enabled: isAuthenticated,
+    staleTime: 30_000,
+  });
+  const solvedSet = new Set(solvedIds);
 
   const { data: bookmarks = [] } = useQuery({
     queryKey: ['bookmarks'],
@@ -189,11 +218,15 @@ function DsaContent() {
   useEffect(() => {
     if (selectedSlug && subjects.length) {
       const sub = subjects.find(s => s.topics.some(t => t.slug === selectedSlug));
-      if (sub) setExpanded(prev => new Set([...prev, sub.slug]));
+      if (sub) {
+        setExpanded(prev => new Set([...prev, sub.slug]));
+        // Auto-switch tab based on selected topic's subject
+        setActiveTab(ALGORITHM_SLUGS.has(sub.slug) ? 'algo' : 'ds');
+      }
     }
   }, [selectedSlug, subjects]);
 
-  const sidebarProps = { subjects, subjectsLoading, activeTab, setActiveTab, selectedSlug, selectTopic, expanded, toggleExpand, completedTopicIds, isAuthenticated };
+  const sidebarProps = { subjects, subjectsLoading, selectedSlug, selectTopic, expanded, toggleExpand, completedTopicIds, isAuthenticated, activeTab, setActiveTab };
 
   return (
     <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-6">
@@ -338,7 +371,7 @@ function DsaContent() {
               </article>
 
               {/* Code Playground */}
-              <CodeRunner defaultLang="cpp" />
+              {topicData.editorial?.includeCodeEditor && <CodeRunner defaultLang="cpp" />}
 
               {/* Practice Problems */}
               {practiceProblems.length > 0 && (
@@ -354,9 +387,16 @@ function DsaContent() {
                       .sort((a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999))
                       .map((p, idx) => (
                         <div key={p.id} className={cn('flex items-center justify-between px-4 py-3 hover:bg-accent/40 transition-colors', idx > 0 && 'border-t border-border')}>
-                          <Link href={`/problems/${p.slug}`} className="font-medium text-sm hover:text-indigo-600 transition-colors flex-1 min-w-0 truncate">
-                            {p.title}
-                          </Link>
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {isAuthenticated && solvedSet.has(p.id) ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                            ) : isAuthenticated ? (
+                              <Circle className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
+                            ) : null}
+                            <Link href={`/problems/${p.slug}`} className="font-medium text-sm hover:text-indigo-600 transition-colors truncate">
+                              {p.title}
+                            </Link>
+                          </div>
                           <div className="flex items-center gap-3 shrink-0 ml-3">
                             <span className={cn('px-2 py-0.5 rounded-full text-xs font-semibold', DIFF_STYLES[p.difficulty as keyof typeof DIFF_STYLES] ?? 'text-muted-foreground bg-muted')}>
                               {p.difficulty[0] + p.difficulty.slice(1).toLowerCase()}

@@ -6,6 +6,64 @@ import { CategoryType } from '@prisma/client';
 export class ContentService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // ── Get published courses ─────────────────────────────────────────────────
+  async getCourses() {
+    return this.prisma.course.findMany({
+      where: { published: true, type: 'COURSE' },
+      orderBy: { orderIndex: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        icon: true,
+        thumbnail: true,
+        ctaText: true,
+        ctaUrl: true,
+        dsThumbnail: true,
+        dsCtaText: true,
+        dsCtaUrl: true,
+        algoThumbnail: true,
+        algoCtaText: true,
+        algoCtaUrl: true,
+      },
+    });
+  }
+
+  // ── Get published languages ────────────────────────────────────────────────
+  async getLanguages() {
+    return this.prisma.course.findMany({
+      where: { published: true, type: 'LANGUAGE' },
+      orderBy: { orderIndex: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        icon: true,
+        thumbnail: true,
+        ctaText: true,
+        ctaUrl: true,
+      },
+    });
+  }
+
+  // ── Get published practice categories ─────────────────────────────────────
+  async getPracticeCategories() {
+    return this.prisma.practiceCategory.findMany({
+      where: { published: true },
+      orderBy: { orderIndex: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        icon: true,
+        categoryType: true,
+      },
+    });
+  }
+
   // ── Get subjects by category ──────────────────────────────────────────────
   async getSubjects(categoryType: CategoryType) {
     return this.prisma.subject.findMany({
@@ -25,6 +83,57 @@ export class ContentService {
         },
       },
     });
+  }
+
+  // ── Get subjects by course slug ───────────────────────────────────────────
+  async getSubjectsByCourse(courseSlug: string) {
+    const course = await this.prisma.course.findUnique({
+      where: { slug: courseSlug },
+    });
+    if (!course) throw new NotFoundException('Course not found');
+
+    return this.prisma.subject.findMany({
+      where: { courseId: course.id },
+      orderBy: { orderIndex: 'asc' },
+      include: {
+        topics: {
+          orderBy: { orderIndex: 'asc' },
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            shortDescription: true,
+            difficulty: true,
+            orderIndex: true,
+          },
+        },
+      },
+    });
+  }
+
+  // ── Get course by slug ────────────────────────────────────────────────────
+  async getCourseBySlug(slug: string) {
+    const course = await this.prisma.course.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        icon: true,
+        thumbnail: true,
+        ctaText: true,
+        ctaUrl: true,
+        dsThumbnail: true,
+        dsCtaText: true,
+        dsCtaUrl: true,
+        algoThumbnail: true,
+        algoCtaText: true,
+        algoCtaUrl: true,
+      },
+    });
+    if (!course) throw new NotFoundException('Course not found');
+    return course;
   }
 
   // ── Get topic by slug ─────────────────────────────────────────────────────
