@@ -15,67 +15,50 @@ export default function ContactPage() {
 
       {/* Contact cards */}
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          {
-            icon: Github,
-            title: 'GitHub',
-            desc: 'Report bugs or request features',
-            label: 'Open an issue',
-            href: 'https://github.com/dsasuite',
-            color: 'text-gray-700 dark:text-gray-300',
-            bg: 'bg-gray-50 dark:bg-gray-900/20',
-          },
-          {
-            icon: Mail,
-            title: 'Email',
-            desc: 'For general enquiries',
-            label: 'dsasuite@gmail.com',
-            href: 'mailto:dsasuite@gmail.com',
-            color: 'text-indigo-600',
-            bg: 'bg-indigo-50 dark:bg-indigo-900/20',
-          },
-          {
-            icon: MessageSquare,
-            title: 'Instagram',
-            desc: 'Suggest topics or improvements',
-            label: 'Submit feedback',
-            href: 'https://www.instagram.com/dsa_suite/',
-            color: 'text-blue-600',
-            bg: 'bg-blue-50 dark:bg-blue-900/20',
-          },
-          {
-            icon: MessageSquare ,
-            title: 'Whatsapp',
-            desc: 'Connect Our whatsapp community',
-            label: 'Get Connected',
-            href: 'https://chat.whatsapp.com/CTXI4iXLhXn8cjzZ1UXMKO?mode=gi_t',
-            color: 'text-blue-600',
-            bg: 'bg-gray-50 dark:bg-gray-900/20',
-          },
-           {
-            icon: MessageSquare ,
-            title: 'Linked In',
-            desc: 'Connect us on Linked In',
-            label: 'follow for regular posts',
-            href: 'https://www.linkedin.com/in/dsa-suite/',
-            color: 'text-blue-800',
-            bg: 'bg-gray-50 dark:bg-gray-900/20',
-          }
-        ].map(c => (
-          <a key={c.title} href={c.href} target="_blank" rel="noopener noreferrer"
-            className="group flex flex-col gap-4 p-6 rounded-xl border border-border bg-card hover:shadow-md transition-all">
-            <div className={`w-10 h-10 rounded-lg ${c.bg} ${c.color} flex items-center justify-center`}>
-              <c.icon className="w-5 h-5" />
+          {[
+            {
+              icon: Mail,
+              title: 'Email',
+              desc: 'For general enquiries',
+              label: 'dsasuite@gmail.com',
+              href: 'mailto:dsasuite@gmail.com',
+              color: 'text-indigo-700 dark:text-indigo-300',
+              bg: 'bg-indigo-50 dark:bg-indigo-900/20',
+            },
+            {
+              icon: MessageSquare,
+              title: 'Feedback',
+              desc: 'Share suggestions or feedback',
+              label: 'Feedback Form',
+              href: 'https://forms.gle/xyz',
+              color: 'text-green-700 dark:text-green-300',
+              bg: 'bg-green-50 dark:bg-green-900/20',
+            },
+            {
+              icon: BookOpen,
+              title: 'Editorials',
+              desc: 'Request a new editorial',
+              label: 'Request Editorial',
+              href: 'mailto:dsasuite@gmail.com?subject=Editorial%20Request',
+              color: 'text-blue-700 dark:text-blue-300',
+              bg: 'bg-blue-50 dark:bg-blue-900/20',
+            },
+          ].map((card) => (
+            <div key={card.title} className={`flex flex-col items-center gap-3 p-6 rounded-2xl border border-border bg-card ${card.bg}`}>
+              <card.icon className={`w-8 h-8 ${card.color}`} />
+              <h3 className="font-semibold text-lg">{card.title}</h3>
+              <p className="text-muted-foreground text-sm text-center">{card.desc}</p>
+              {card.href.startsWith('http') ? (
+                <a href={card.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-muted hover:bg-accent text-sm font-medium transition-colors">
+                  {card.label} <ArrowRight className="w-4 h-4" />
+                </a>
+              ) : (
+                <a href={card.href} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-muted hover:bg-accent text-sm font-medium transition-colors">
+                  {card.label} <ArrowRight className="w-4 h-4" />
+                </a>
+              )}
             </div>
-            <div>
-              <h3 className="font-semibold">{c.title}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">{c.desc}</p>
-            </div>
-            <span className={`text-xs font-medium ${c.color} flex items-center gap-1 group-hover:gap-2 transition-all mt-auto`}>
-              {c.label} <ArrowRight className="w-3 h-3" />
-            </span>
-          </a>
-        ))}
+          ))}
       </section>
 
       {/* FAQ */}

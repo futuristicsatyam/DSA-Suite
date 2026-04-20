@@ -76,3 +76,77 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground;
 }
+
+/* ── Animations ─────────────────────────────────────────────────────── */
+
+/* fade-in-up for hero */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s ease-out both;
+}
+
+/* floating cards */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+@keyframes floatDelayed {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+.animate-float-delayed {
+  animation: floatDelayed 5s ease-in-out 1s infinite;
+}
+.animate-float-slow {
+  animation: floatSlow 6s ease-in-out 0.5s infinite;
+}
+
+/* scroll reveal */
+.reveal-section {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+.reveal-section.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* blinking cursor */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.animate-blink {
+  animation: blink 0.8s step-end infinite;
+}
+
+/* particles */
+@keyframes particle {
+  0%, 100% { opacity: 0; transform: translateY(0) scale(1); }
+  20% { opacity: 1; }
+  80% { opacity: 0.5; }
+  100% { opacity: 0; transform: translateY(-60px) scale(0.5); }
+}
+.animate-particle {
+  animation: particle 5s ease-in-out infinite;
+}
+
+/* progress bar fill */
+@keyframes progressFill {
+  from { width: 0; }
+  to { width: var(--target-width); }
+}
+.progress-bar-animate {
+  animation: progressFill 1.5s ease-out forwards;
+}
